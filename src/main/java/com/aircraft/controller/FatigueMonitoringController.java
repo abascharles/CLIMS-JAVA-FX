@@ -2,56 +2,112 @@ package com.aircraft.controller;
 
 import com.aircraft.dao.LauncherDAO;
 import com.aircraft.model.Launcher;
+import com.aircraft.model.LauncherMission;
+import com.aircraft.model.LauncherStatus;
 import com.aircraft.util.AlertUtils;
 import com.aircraft.util.PDFGenerator;
+import com.aircraft.util.SessionManager;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextField;
+import javafx.scene.Scene;
+import javafx.scene.chart.LineChart;
+import javafx.scene.chart.NumberAxis;
+import javafx.scene.chart.XYChart;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import javafx.stage.Window;
 
 import java.io.File;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-import java.util.Random;
+import java.text.DecimalFormat;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * Controller for the Fatigue Monitoring screen.
- * Handles searching for launcher data and generating fatigue monitoring reports.
+ * Handles displaying launcher status and generating fatigue monitoring reports.
  */
 public class FatigueMonitoringController {
 
     @FXML
-    private TextField launcherSerialField;
+    private Label dateTimeLabel;
 
     @FXML
-    private TextField pylonIdField;
+    private Label usernameLabel;
 
     @FXML
-    private TextField aircraftTypeField;
+    private Label reportTitleLabel;
 
     @FXML
-    private TextField flightHoursField;
+    private Label maintenanceStatusLabel;
 
     @FXML
-    private TextField fatigueIndexField;
+    private ComboBox<String> launcherSerialComboBox;
 
     @FXML
-    private Button searchButton;
+    private TextField launcherNameField;
 
     @FXML
-    private Button clearButton;
+    private TextField partNumberField;
 
     @FXML
-    private Button generateButton;
+    private TextField serialNumberField;
+
+    @FXML
+    private TextField missionCountField;
+
+    @FXML
+    private TextField firingCountField;
+
+    @FXML
+    private TextField flightTimeField;
+
+    @FXML
+    private TextField remainingLifeField;
+
+    @FXML
+    private VBox graphContainer;
+
+    @FXML
+    private TableView<LauncherMission> missionHistoryTable;
+
+    @FXML
+    private TableColumn<LauncherMission, Integer> missionIdColumn;
+
+    @FXML
+    private TableColumn<LauncherMission, String> missionDateColumn;
+
+    @FXML
+    private TableColumn<LauncherMission, String> missionAircraftColumn;
+
+    @FXML
+    private TableColumn<LauncherMission, Double> missionFlightTimeColumn;
+
+    @FXML
+    private TableColumn<LauncherMission, Double> missionDamageColumn;
 
     @FXML
     private Button printReportButton;
 
+    @FXML
+    private Button refreshButton;
+
+    @FXML
+    private Button expandGraphButton;
+
     private final LauncherDAO launcherDAO = new LauncherDAO();
-    private Launcher currentLauncher = null;
-    private Random random = new Random();
+    private LauncherStatus currentLauncherStatus = null;
+    private ObservableList<LauncherMission> missionList = FXCollections.observableList(FXCollections.observableArrayList());
+    private LineChart<Number, Number> currentChart; // Store the current chart instance
 
     /**
      * Initializes the controller after its root element has been processed.
@@ -59,82 +115,164 @@ public class FatigueMonitoringController {
      */
     @FXML
     public void initialize() {
+        // Set current date/time and username
+        updateDateTime();
+        updateUsername();
+
+        // Set up combo box for launcher serial numbers
+        loadLauncherSerialNumbers();
+
+        // Set up table columns
+        setupTableColumns();
+
+        // Set up launcher selection change listener
+        launcherSerialComboBox.setOnAction(e -> onLauncherSelected());
+
         // Set initial UI state
         updateUIState(false);
+
+        // Initially disable expand graph button
+        if (expandGraphButton != null) {
+            expandGraphButton.setDisable(true);
+        }
     }
 
     /**
-     * Handles the "Search" button click.
-     * Searches for a launcher by its serial number.
+     * Updates the date and time label with the current date and time.
+     */
+    private void updateDateTime() {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String formattedDateTime = LocalDateTime.now().format(formatter);
+        dateTimeLabel.setText("Date: " + formattedDateTime);
+    }
+
+    /**
+     * Updates the username label with the current user's username.
+     */
+    private void updateUsername() {
+        // Use getInstance() to get the SessionManager instance
+        String username = SessionManager.getInstance().getCurrentUsername();
+        usernameLabel.setText("User: " + (username != null ? username : "Unknown"));
+    }
+
+    /**
+     * Sets up the table columns for the mission history table.
+     */
+    private void setupTableColumns() {
+        missionIdColumn.setCellValueFactory(new PropertyValueFactory<>("missionId"));
+        missionDateColumn.setCellValueFactory(new PropertyValueFactory<>("missionDate"));
+        missionAircraftColumn.setCellValueFactory(new PropertyValueFactory<>("aircraft"));
+        missionFlightTimeColumn.setCellValueFactory(new PropertyValueFactory<>("flightTime"));
+        missionDamageColumn.setCellValueFactory(new PropertyValueFactory<>("damageFactor"));
+    }
+
+    /**
+     * Loads launcher serial numbers from the database into the combo box.
+     */
+    private void loadLauncherSerialNumbers() {
+        List<String> serialNumbers = launcherDAO.getAllLauncherSerialNumbers();
+        launcherSerialComboBox.setItems(FXCollections.observableArrayList(serialNumbers));
+    }
+
+    /**
+     * Handles the selection of a launcher from the combo box.
+     */
+    private void onLauncherSelected() {
+        String selectedSerial = launcherSerialComboBox.getValue();
+        if (selectedSerial != null && !selectedSerial.isEmpty()) {
+            // Load launcher status data
+            currentLauncherStatus = launcherDAO.getLauncherStatusBySerialNumber(selectedSerial);
+
+            if (currentLauncherStatus != null) {
+                // Populate form fields
+                populateFormFields(currentLauncherStatus);
+
+                // Load mission history
+                List<LauncherMission> missions = launcherDAO.getMissionHistoryBySerialNumber(selectedSerial);
+                missionList.clear();
+                missionList.addAll(missions);
+                missionHistoryTable.setItems(missionList);
+
+                // Create degradation graph
+                createDegradationGraph(missions);
+
+                // Update UI state
+                updateUIState(true);
+
+                // Update report title
+                reportTitleLabel.setText("Fatigue Report: " + selectedSerial);
+            } else {
+                // Launcher status not found
+                AlertUtils.showError(null, "Data Error", "Launcher status data not found for: " + selectedSerial);
+                clearForm();
+                updateUIState(false);
+            }
+        }
+    }
+
+    /**
+     * Handles the "Refresh" button click.
+     * Reloads launcher serial numbers from the database.
      *
      * @param event The ActionEvent object
      */
     @FXML
-    protected void onSearchButtonClick(ActionEvent event) {
-        Window owner = searchButton.getScene().getWindow();
+    protected void onRefreshButtonClick(ActionEvent event) {
+        loadLauncherSerialNumbers();
+        updateDateTime();
+    }
 
-        // Validate input field
-        if (launcherSerialField.getText().isEmpty()) {
-            AlertUtils.showError(owner, "Search Error", "Please enter a launcher serial number");
+    /**
+     * Handles the "Expand Graph" button click.
+     * Opens the degradation graph in a new window.
+     *
+     * @param event The ActionEvent object
+     */
+    @FXML
+    protected void onExpandGraphButtonClick(ActionEvent event) {
+        if (currentChart == null) {
             return;
         }
 
-        // Search for launcher
-        String partNumber = launcherSerialField.getText();
-        currentLauncher = launcherDAO.getByPartNumber(partNumber);
+        // Create a copy of the chart for the popup window
+        NumberAxis xAxis = new NumberAxis();
+        NumberAxis yAxis = new NumberAxis(0, 100, 10);
+        xAxis.setLabel("Mission Number");
+        yAxis.setLabel("Remaining Life (%)");
 
-        if (currentLauncher != null) {
-            // Launcher found, populate form fields with launcher data and simulated fatigue data
-            populateFormFields(currentLauncher);
-            updateUIState(true);
-        } else {
-            // Launcher not found
-            AlertUtils.showError(owner, "Search Error", "Launcher not found: " + partNumber);
-            clearForm();
-            updateUIState(false);
-        }
-    }
+        LineChart<Number, Number> popupChart = new LineChart<>(xAxis, yAxis);
+        popupChart.setTitle("Launcher Degradation Over Time");
+        popupChart.setAnimated(false);
+        popupChart.setCreateSymbols(true);
 
-    /**
-     * Handles the "Clear" button click.
-     * Clears the form fields.
-     *
-     * @param event The ActionEvent object
-     */
-    @FXML
-    protected void onClearButtonClick(ActionEvent event) {
-        clearForm();
-        updateUIState(false);
-        currentLauncher = null;
-    }
+        // Copy the data from the current chart
+        for (XYChart.Series<Number, Number> series : currentChart.getData()) {
+            XYChart.Series<Number, Number> newSeries = new XYChart.Series<>();
+            newSeries.setName(series.getName());
 
-    /**
-     * Handles the "Generate" button click.
-     * Generates a fatigue monitoring report based on the form data.
-     *
-     * @param event The ActionEvent object
-     */
-    @FXML
-    protected void onGenerateButtonClick(ActionEvent event) {
-        Window owner = generateButton.getScene().getWindow();
+            for (XYChart.Data<Number, Number> data : series.getData()) {
+                newSeries.getData().add(new XYChart.Data<>(data.getXValue(), data.getYValue()));
+            }
 
-        // Validate form fields
-        if (!validateFormFields()) {
-            AlertUtils.showError(owner, "Validation Error", "Please fill in all fields with valid values");
-            return;
+            popupChart.getData().add(newSeries);
         }
 
-        // Update fatigue index calculation
-        updateFatigueIndex();
+        // Create a new stage (window) for the chart
+        Stage popupStage = new Stage();
+        popupStage.setTitle("Launcher Degradation Chart - " +
+                (currentLauncherStatus != null ? currentLauncherStatus.getSerialNumber() : ""));
+        popupStage.initModality(Modality.NONE); // Non-modal window
 
-        // Show success message
-        AlertUtils.showInformation(
-                owner,
-                "Report Generated",
-                "Fatigue monitoring report has been generated successfully.\n" +
-                        "Launcher: " + launcherSerialField.getText() + "\n" +
-                        "Fatigue Index: " + fatigueIndexField.getText()
-        );
+        // Make the chart fill the window
+        BorderPane borderPane = new BorderPane();
+        borderPane.setCenter(popupChart);
+        borderPane.setPrefSize(800, 600);
+
+        Scene scene = new Scene(borderPane, 800, 600);
+        popupStage.setScene(scene);
+
+        // Show the window
+        popupStage.show();
     }
 
     /**
@@ -147,9 +285,9 @@ public class FatigueMonitoringController {
     protected void onPrintReportButtonClick(ActionEvent event) {
         Window owner = printReportButton.getScene().getWindow();
 
-        // Validate form fields
-        if (!validateFormFields()) {
-            AlertUtils.showError(owner, "Validation Error", "Please fill in all fields with valid values");
+        // Validate that a launcher is selected
+        if (currentLauncherStatus == null) {
+            AlertUtils.showError(owner, "Validation Error", "Please select a launcher first");
             return;
         }
 
@@ -160,22 +298,20 @@ public class FatigueMonitoringController {
                 new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
         );
 
-        String defaultFileName = "fatigue_report_" + launcherSerialField.getText() + ".pdf";
+        String defaultFileName = "fatigue_report_" + currentLauncherStatus.getSerialNumber() + ".pdf";
         fileChooser.setInitialFileName(defaultFileName);
 
         File file = fileChooser.showSaveDialog(owner);
         if (file != null) {
             try {
-                // Create a PDF report
+                // Create a PDF report - use getInstance() to get the SessionManager
                 PDFGenerator pdfGenerator = new PDFGenerator();
                 pdfGenerator.generateFatigueReport(
                         file,
-                        pylonIdField.getText(),
-                        aircraftTypeField.getText(),
-                        launcherSerialField.getText(),
-                        currentLauncher != null ? currentLauncher.getNomenclatura() : "",
-                        Double.parseDouble(flightHoursField.getText()),
-                        Double.parseDouble(fatigueIndexField.getText())
+                        currentLauncherStatus,
+                        missionList,
+                        SessionManager.getInstance().getCurrentUsername(),
+                        maintenanceStatusLabel.getText()
                 );
 
                 AlertUtils.showInformation(
@@ -195,45 +331,88 @@ public class FatigueMonitoringController {
     }
 
     /**
-     * Populates the form fields with launcher data and simulated fatigue data.
+     * Populates the form fields with launcher status data.
      *
-     * @param launcher The Launcher object with data to populate
+     * @param status The LauncherStatus object with data to populate
      */
-    private void populateFormFields(Launcher launcher) {
-        // Generate simulated fatigue monitoring data
-        String pylonId = String.format("%05d", 10000 + random.nextInt(90000));
-        String aircraftType = getRandomAircraftType();
-        double flightHours = 1000 + random.nextInt(4000);
+    private void populateFormFields(LauncherStatus status) {
+        launcherNameField.setText(status.getLauncherName());
+        partNumberField.setText(status.getPartNumber());
+        serialNumberField.setText(status.getSerialNumber());
+        missionCountField.setText(String.valueOf(status.getMissionCount()));
+        firingCountField.setText(String.valueOf(status.getFiringCount()));
 
-        // Populate form fields
-        pylonIdField.setText(pylonId);
-        aircraftTypeField.setText(aircraftType);
-        flightHoursField.setText(String.valueOf((int)flightHours));
+        DecimalFormat df = new DecimalFormat("#,##0.00");
+        flightTimeField.setText(df.format(status.getFlightTime()));
+        remainingLifeField.setText(df.format(status.getRemainingLifePercentage()));
 
-        // Calculate fatigue index based on flight hours and a random factor
-        updateFatigueIndex();
+        // Set maintenance status with color coding
+        String maintenanceStatus = status.getMaintenanceStatus();
+        maintenanceStatusLabel.setText(maintenanceStatus);
+
+        // Color coding for maintenance status
+        switch (maintenanceStatus.toUpperCase()) {
+            case "OK":
+                maintenanceStatusLabel.setTextFill(Color.GREEN);
+                break;
+            case "ATTENZIONE":
+                maintenanceStatusLabel.setTextFill(Color.ORANGE);
+                break;
+            case "MANUTENZIONE URGENTE":
+                maintenanceStatusLabel.setTextFill(Color.RED);
+                break;
+            default:
+                maintenanceStatusLabel.setTextFill(Color.BLACK);
+        }
     }
 
     /**
-     * Updates the fatigue index based on flight hours and other factors.
+     * Creates a graph showing launcher degradation over time.
+     *
+     * @param missions List of launcher missions to plot
      */
-    private void updateFatigueIndex() {
-        try {
-            double flightHours = Double.parseDouble(flightHoursField.getText());
+    private void createDegradationGraph(List<LauncherMission> missions) {
+        graphContainer.getChildren().clear();
 
-            // Calculate fatigue index (simplified formula for demonstration)
-            double baseIndex = flightHours / 10000.0; // Higher hours = higher index
-            double randomFactor = 0.8 + (random.nextDouble() * 0.4); // Random factor between 0.8 and 1.2
-            double fatigueIndex = baseIndex * randomFactor;
+        // Create axes
+        NumberAxis xAxis = new NumberAxis();
+        NumberAxis yAxis = new NumberAxis(0, 100, 10);
+        xAxis.setLabel("Mission Number");
+        yAxis.setLabel("Remaining Life (%)");
 
-            // Limit to range 0-1 and round to 2 decimal places
-            fatigueIndex = Math.min(1.0, fatigueIndex);
-            BigDecimal bd = new BigDecimal(fatigueIndex).setScale(2, RoundingMode.HALF_UP);
+        // Create chart
+        LineChart<Number, Number> lineChart = new LineChart<>(xAxis, yAxis);
+        lineChart.setTitle("Launcher Degradation Over Time");
+        lineChart.setAnimated(false);
+        lineChart.setCreateSymbols(true);
 
-            fatigueIndexField.setText(bd.toString());
-        } catch (NumberFormatException e) {
-            // If flight hours is not a valid number, set a default value
-            fatigueIndexField.setText("0.00");
+        // Create data series
+        XYChart.Series<Number, Number> series = new XYChart.Series<>();
+        series.setName("Remaining Life");
+
+        // If no missions, show just current value
+        if (missions.isEmpty() && currentLauncherStatus != null) {
+            series.getData().add(new XYChart.Data<>(1, currentLauncherStatus.getRemainingLifePercentage()));
+        } else {
+            // Add data points from missions - we'll need to calculate cumulative damage
+            double remainingLife = 100.0;
+            for (int i = 0; i < missions.size(); i++) {
+                LauncherMission mission = missions.get(i);
+                remainingLife -= mission.getDamageFactor() * 100; // Convert damage to percentage
+                remainingLife = Math.max(0, remainingLife); // Don't go below 0
+                series.getData().add(new XYChart.Data<>(i + 1, remainingLife));
+            }
+        }
+
+        lineChart.getData().add(series);
+        graphContainer.getChildren().add(lineChart);
+
+        // Store the current chart
+        currentChart = lineChart;
+
+        // Enable/disable expand graph button based on whether there's a chart
+        if (expandGraphButton != null) {
+            expandGraphButton.setDisable(currentChart == null);
         }
     }
 
@@ -241,11 +420,26 @@ public class FatigueMonitoringController {
      * Clears all form fields.
      */
     private void clearForm() {
-        launcherSerialField.clear();
-        pylonIdField.clear();
-        aircraftTypeField.clear();
-        flightHoursField.clear();
-        fatigueIndexField.clear();
+        launcherNameField.clear();
+        partNumberField.clear();
+        serialNumberField.clear();
+        missionCountField.clear();
+        firingCountField.clear();
+        flightTimeField.clear();
+        remainingLifeField.clear();
+
+        maintenanceStatusLabel.setText("[Status]");
+        maintenanceStatusLabel.setTextFill(Color.BLACK);
+
+        missionList.clear();
+        graphContainer.getChildren().clear();
+        currentChart = null;
+
+        if (expandGraphButton != null) {
+            expandGraphButton.setDisable(true);
+        }
+
+        reportTitleLabel.setText("Fatigue Report: [Serial Number]");
     }
 
     /**
@@ -254,55 +448,9 @@ public class FatigueMonitoringController {
      * @param launcherLoaded true if a launcher is loaded, false otherwise
      */
     private void updateUIState(boolean launcherLoaded) {
-        generateButton.setDisable(!launcherLoaded);
         printReportButton.setDisable(!launcherLoaded);
-
-        // Set fields editable/readonly based on state
-        pylonIdField.setEditable(launcherLoaded);
-        aircraftTypeField.setEditable(launcherLoaded);
-        flightHoursField.setEditable(launcherLoaded);
-        fatigueIndexField.setEditable(false); // Always calculated automatically
-    }
-
-    /**
-     * Validates the form fields.
-     *
-     * @return true if all fields are valid, false otherwise
-     */
-    private boolean validateFormFields() {
-        if (pylonIdField.getText().isEmpty() ||
-                aircraftTypeField.getText().isEmpty() ||
-                flightHoursField.getText().isEmpty() ||
-                fatigueIndexField.getText().isEmpty()) {
-            return false;
+        if (expandGraphButton != null) {
+            expandGraphButton.setDisable(!launcherLoaded || currentChart == null);
         }
-
-        try {
-            // Validate flight hours field
-            double flightHours = Double.parseDouble(flightHoursField.getText());
-            if (flightHours < 0) {
-                return false;
-            }
-
-            // Validate fatigue index field
-            double fatigueIndex = Double.parseDouble(fatigueIndexField.getText());
-            return !(fatigueIndex < 0 || fatigueIndex > 1);
-
-        } catch (NumberFormatException e) {
-            return false;
-        }
-    }
-
-    /**
-     * Returns a random aircraft type for demonstration purposes.
-     *
-     * @return A random aircraft type
-     */
-    private String getRandomAircraftType() {
-        String[] aircraftTypes = {
-                "Typhoon", "F-35", "F-16", "F/A-18", "Rafale",
-                "Eurofighter", "Su-35", "MiG-29", "Gripen", "F-22"
-        };
-        return aircraftTypes[random.nextInt(aircraftTypes.length)];
     }
 }

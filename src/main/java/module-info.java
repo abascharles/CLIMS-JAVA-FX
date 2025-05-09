@@ -5,6 +5,9 @@ module com.aircraft {
     requires javafx.graphics;
     requires javafx.base;
     requires javafx.web;
+    requires kernel;
+    requires layout;
+    requires io;
 
     // Open all packages to JavaFX for reflection
     opens com.aircraft to javafx.fxml;
