@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Hyperlink?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import java.net.URL?>
+
+<StackPane prefHeight="700.0" prefWidth="900.0" styleClass="login-background" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.aircraft.controller.LoginController">
+    <stylesheets>
+        <URL value="@../css/login.css" />
+    </stylesheets>
+    <children>
+        <!-- Fixed width white card that floats in the center -->
+        <BorderPane maxHeight="550.0" maxWidth="400.0" styleClass="login-card">
+            <center>
+                <VBox alignment="CENTER" spacing="15.0">
+                    <padding>
+                        <Insets bottom="40.0" left="40.0" right="40.0" top="60.0" />
+                    </padding>
+                    <children>
+                        <!-- Logo - significantly larger -->
+                        <ImageView fitHeight="120.0" fitWidth="120.0" pickOnBounds="true" preserveRatio="true"
+                                   VBox.vgrow="NEVER">
+                            <image>
+                                <Image url="@../images/logo.png" />
+                            </image>
+                            <VBox.margin>
+                                <Insets bottom="10.0" />
+                            </VBox.margin>
+                        </ImageView>
+
+                        <!-- System name - CLIMS -->
+                        <Label styleClass="system-name" text="CLIMS">
+                            <VBox.margin>
+                                <Insets bottom="20.0" />
+                            </VBox.margin>
+                        </Label>
+
+                        <!-- Login form - moved up closer to CLIMS -->
+                        <TextField fx:id="usernameField" promptText="Username" styleClass="login-field">
+                            <VBox.margin>
+                                <Insets bottom="10.0" />
+                            </VBox.margin>
+                        </TextField>
+
+                        <PasswordField fx:id="passwordField" promptText="Password" styleClass="login-field">
+                            <VBox.margin>
+                                <Insets bottom="25.0" />
+                            </VBox.margin>
+                        </PasswordField>
+
+                        <!-- Login button -->
+                        <Button fx:id="loginButton" defaultButton="true" mnemonicParsing="false"
+                                onAction="#onLoginButtonClick" styleClass="login-button"
+                                text="Login" maxWidth="Infinity" />
+
+                        <!-- New user link -->
+                        <HBox alignment="CENTER" spacing="5.0">
+                            <VBox.margin>
+                                <Insets top="20.0" />
+                            </VBox.margin>
+                            <children>
+<!--                                <Label styleClass="secondary-text" text="New user?" />-->
+<!--                                <Hyperlink fx:id="signUpLink" onAction="#onSignUpLinkClick" styleClass="signup-link" text="Create account" />-->
+                            </children>
+                        </HBox>
+                    </children>
+                </VBox>
+            </center>
+        </BorderPane>
+    </children>
+</StackPane>

@@ -1,0 +1,59 @@
+.module-title {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.section-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.module-panel {
+    -fx-background-color: #f5f5f5;
+}
+
+/* Aircraft view styles */
+.aircraft-view {
+    -fx-background-color: white;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 0);
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-padding: 10;
+}
+
+/* Missile point styles - Not using the rectangle styles directly in the CSS
+   because the controller applies the styles directly to the rectangles */
+.missile-position {
+    -fx-cursor: hand;
+}
+
+.missile-point-label {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+/* Position selection panel */
+.position-panel {
+    -fx-background-color: white;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.2), 10, 0, 0, 0);
+    -fx-background-radius: 5;
+    -fx-border-radius: 5;
+    -fx-padding: 10;
+}
+
+/* Error message */
+.error-message {
+    -fx-text-fill: #d32f2f;
+    -fx-font-size: 12px;
+    -fx-padding: 5px 0;
+}
+
+/* Save button style */
+.save-button {
+    -fx-background-color: #2e7d32;
+    -fx-text-fill: white;
+}
+
+.save-button:hover {
+    -fx-background-color: #388e3c;
+}

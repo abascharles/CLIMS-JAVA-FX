@@ -1,0 +1,76 @@
+/* Improved contrast login styles with signup link */
+
+.login-background {
+    -fx-background-color: #e6edf2;
+}
+
+.login-card {
+    -fx-background-color: white;
+    -fx-background-radius: 10px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.15), 10, 0, 0, 3);
+}
+
+.system-name {
+    -fx-font-size: 26px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #1d3e5f;
+}
+
+.subtitle-label {
+    -fx-font-size: 16px;
+    -fx-text-fill: #566573;
+}
+
+/* Text field with light blue background for better contrast */
+.login-field {
+    -fx-background-color: #f5f8fa;  /* Light blue background */
+    -fx-border-color: #d5e1ed;
+    -fx-border-radius: 3px;
+    -fx-padding: 12px;
+    -fx-font-size: 14px;
+    -fx-pref-height: 42px;
+    -fx-min-width: 320px;
+    -fx-prompt-text-fill: #6c7a89; /* Darker placeholder text */
+    -fx-text-fill: #2c3e50; /* Darker text color */
+}
+
+.login-field:focused {
+    -fx-border-color: #1d3e5f;
+    -fx-background-color: #edf3f8; /* Slightly darker when focused */
+}
+
+.login-button {
+    -fx-background-color: #1d3e5f;
+    -fx-text-fill: white;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-padding: 12px;
+    -fx-pref-height: 44px;
+    -fx-background-radius: 4px;
+}
+
+.login-button:hover {
+    -fx-background-color: #16314a;
+    -fx-cursor: hand;
+}
+
+/* Styling for signup link section */
+.secondary-text {
+    -fx-text-fill: #6c7a89;
+    -fx-font-size: 13px;
+}
+
+.signup-link {
+    -fx-text-fill: #1d3e5f;
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-border-color: transparent;
+    -fx-padding: 0 0 0 0;
+    -fx-underline: false;
+}
+
+.signup-link:hover {
+    -fx-underline: true;
+    -fx-text-fill: #2980b9;
+    -fx-cursor: hand;
+}

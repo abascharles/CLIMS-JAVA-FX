@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.web.WebView?>
+
+<BorderPane prefHeight="700.0" prefWidth="800.0" styleClass="module-panel" stylesheets="@../css/missile_points.css" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.aircraft.controller.PFMDController">
+    <top>
+        <VBox spacing="10.0" BorderPane.alignment="CENTER">
+            <children>
+                <Label styleClass="module-title" text="Post Flight Management Data (PFMD)">
+                    <font>
+                        <Font name="System Bold" size="18.0" />
+                    </font>
+                </Label>
+                <Separator />
+                <HBox alignment="CENTER_LEFT" spacing="15.0">
+                    <children>
+                        <Label text="Aircraft:" />
+                        <ComboBox fx:id="aircraftComboBox" prefWidth="150.0" promptText="Select Aircraft" />
+                        <Label text="Mission:" />
+                        <ComboBox fx:id="missionComboBox" prefWidth="150.0" promptText="Select Mission" />
+                        <Button mnemonicParsing="false" onAction="#onLoadMissionDataClick" text="Load Mission Data" />
+                    </children>
+                </HBox>
+            </children>
+            <padding>
+                <Insets bottom="10.0" left="15.0" right="15.0" top="10.0" />
+            </padding>
+        </VBox>
+    </top>
+    <center>
+        <VBox spacing="15.0" BorderPane.alignment="CENTER">
+            <children>
+                <Label text="Flight Data">
+                    <font>
+                        <Font name="System Bold" size="14.0" />
+                    </font>
+                </Label>
+                <GridPane hgap="10.0" vgap="10.0">
+                    <columnConstraints>
+                        <javafx.scene.layout.ColumnConstraints hgrow="NEVER" minWidth="120.0" />
+                        <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" />
+                        <javafx.scene.layout.ColumnConstraints hgrow="NEVER" minWidth="120.0" />
+                        <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" />
+                    </columnConstraints>
+                    <rowConstraints>
+                        <javafx.scene.layout.RowConstraints minHeight="30.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                        <javafx.scene.layout.RowConstraints minHeight="30.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                    </rowConstraints>
+                    <children>
+                        <Label text="Max G-Load:" />
+                        <TextField fx:id="gloadMaxField" GridPane.columnIndex="1" />
+                        <Label text="Min G-Load:" GridPane.columnIndex="2" />
+                        <TextField fx:id="gloadMinField" GridPane.columnIndex="3" />
+                        <Label text="Average Altitude:" GridPane.rowIndex="1" />
+                        <TextField fx:id="quotaMediaField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                        <Label text="Max Speed:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                        <TextField fx:id="velocitaMassimaField" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                    </children>
+                </GridPane>
+                <Separator />
+                <Label text="Missile Status">
+                    <font>
+                        <Font name="System Bold" size="14.0" />
+                    </font>
+                </Label>
+                <StackPane fx:id="aircraftContainer" styleClass="aircraft-view" VBox.vgrow="ALWAYS">
+                    <children>
+                        <!-- WebView for SVG -->
+                        <WebView fx:id="aircraftSvgView" minHeight="300.0" minWidth="561.0" prefHeight="300.0" prefWidth="561.0" />
+
+                        <!-- Overlay for missile positions -->
+                        <AnchorPane fx:id="missilePointsContainer" prefHeight="300.0" prefWidth="561.0">
+                            <!-- Missile positions will be added programmatically -->
+                        </AnchorPane>
+                    </children>
+                </StackPane>
+            </children>
+            <padding>
+                <Insets bottom="15.0" left="15.0" right="15.0" top="5.0" />
+            </padding>
+        </VBox>
+    </center>
+    <bottom>
+        <HBox alignment="CENTER_RIGHT" spacing="10.0" BorderPane.alignment="CENTER">
+            <children>
+                <Button mnemonicParsing="false" onAction="#onClearFormClick" text="Clear Form" />
+                <Button defaultButton="true" mnemonicParsing="false" onAction="#onSaveDataClick" text="Save Data" />
+            </children>
+            <padding>
+                <Insets bottom="15.0" left="15.0" right="15.0" top="5.0" />
+            </padding>
+        </HBox>
+    </bottom>
+</BorderPane>

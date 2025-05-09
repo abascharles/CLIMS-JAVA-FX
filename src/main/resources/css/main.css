@@ -1,0 +1,288 @@
+/* Main Application CSS */
+
+/* Global Styles */
+.root {
+    -fx-font-family: 'Segoe UI', Arial, sans-serif;
+    -fx-font-size: 12px;
+    -fx-background-color: #f5f5f5;
+}
+
+/* Login Screen Styles */
+.login-background {
+    -fx-background-color: #e6edf2;
+}
+
+.login-form {
+    -fx-background-color: white;
+    -fx-background-radius: 10px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 10, 0, 0, 0);
+    -fx-max-width: 300px;
+    -fx-max-height: 400px;
+}
+
+.title-label {
+    -fx-text-fill: #1d3e5f;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+.login-button {
+    -fx-background-color: #1d3e5f;
+    -fx-text-fill: white;
+    -fx-min-width: 100px;
+    -fx-cursor: hand;
+    -fx-background-radius: 5px;
+    -fx-font-weight: bold;
+}
+
+.login-button:hover {
+    -fx-background-color: #2980b9;
+}
+
+/* Dashboard Styles */
+.top-panel {
+    -fx-background-color: #1d3e5f;
+    -fx-padding: 10px;
+}
+
+.dashboard-title {
+    -fx-text-fill: white;
+    -fx-font-size: 18px;
+}
+
+.username-label {
+    -fx-text-fill: #f1c40f;
+    -fx-font-weight: bold;
+}
+
+.logout-button {
+    -fx-background-color: #e74c3c;
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+    -fx-background-radius: 5px;
+}
+
+.logout-button:hover {
+    -fx-background-color: #c0392b;
+}
+
+.left-panel {
+    -fx-background-color: #1d3e5f;
+    -fx-min-width: 200px;
+}
+
+.menu-tree {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+}
+
+.menu-tree .tree-cell {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-padding: 6px 8px;
+}
+
+.menu-tree .tree-cell:hover {
+    -fx-background-color: #1d3e5f;
+    -fx-cursor: hand;
+}
+
+.menu-tree .tree-cell:selected {
+    -fx-background-color: #1d3e5f;
+    -fx-text-fill: white;
+}
+
+.welcome-panel {
+    -fx-background-color: white;
+    -fx-padding: 30px;
+    -fx-alignment: center;
+}
+
+/* Module Panel Styles */
+.module-panel {
+    -fx-background-color: white;
+    -fx-padding: 10px;
+}
+
+.module-title {
+    -fx-text-fill: #1d3e5f;
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+}
+
+/* Button Styles */
+.button {
+    -fx-background-color: #1d3e5f;
+    -fx-text-fill: white;
+    -fx-cursor: hand;
+    -fx-background-radius: 5px;
+    -fx-padding: 5px 10px;
+}
+
+.button:hover {
+    -fx-background-color: #1d3e5f;
+}
+
+.button:pressed {
+    -fx-background-color: #1d3e5f;
+}
+
+/* Report Styles */
+.report-container {
+    -fx-background-color: #f9f9f9;
+    -fx-background-radius: 5px;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 5px;
+}
+
+.report-title {
+    -fx-text-fill: #1d3e5f;
+}
+
+.section-title {
+    -fx-text-fill: #1d3e5f;
+}
+
+/* Status Indicators */
+.status-ok {
+    -fx-text-fill: #27ae60;
+    -fx-font-weight: bold;
+}
+
+.status-warning {
+    -fx-text-fill: #f39c12;
+    -fx-font-weight: bold;
+}
+
+.status-danger {
+    -fx-text-fill: #c0392b;
+    -fx-font-weight: bold;
+}
+
+/* Missile Position Styles */
+.missile-position {
+    -fx-background-color: rgba(200, 200, 200, 0.5);
+    -fx-border-color: #555;
+    -fx-border-width: 2px;
+    -fx-border-radius: 5px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+}
+
+.missile-fired {
+    -fx-background-color: #e74c3c;
+    -fx-opacity: 0.8;
+}
+
+.missile-onboard {
+    -fx-background-color: #2ecc71;
+    -fx-opacity: 0.8;
+}
+
+/* Table Styles */
+.table-view {
+    -fx-background-color: white;
+    -fx-table-cell-border-color: #ddd;
+}
+
+.table-view .column-header {
+    -fx-background-color: #1d3e5f;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: white;
+    -fx-alignment: center-left;
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #1d3e5f;
+    -fx-text-fill: white;
+}
+
+/* Form Field Styles */
+.text-field, .password-field, .combo-box {
+    -fx-background-color: white;
+    -fx-border-color: #ddd;
+    -fx-border-radius: 3px;
+    -fx-padding: 5px;
+}
+
+.text-field:focused, .password-field:focused, .combo-box:focused {
+    -fx-border-color: #1d3e5f;
+}
+
+/* Progress Bar Styles */
+.progress-bar {
+    -fx-accent: #27ae60;
+}
+
+.progress-bar .track {
+    -fx-background-color: #ecf0f1;
+}
+
+/* Add these styles to your main.css file */
+
+/* Missile position styles */
+.missile-position {
+    -fx-border-color: #666666;
+    -fx-border-width: 1px;
+    -fx-background-color: #DDDDDD;
+    -fx-opacity: 0.7;
+    -fx-cursor: hand;
+}
+
+.missile-position:hover {
+    -fx-opacity: 1.0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.4), 10, 0, 0, 0);
+}
+
+.missile-empty {
+    -fx-background-color: #DDDDDD;
+    -fx-opacity: 0.5;
+}
+
+.missile-onboard {
+    -fx-background-color: #66FF66;
+    -fx-border-color: #009900;
+    -fx-border-width: 2px;
+    -fx-opacity: 0.9;
+}
+
+.missile-fired {
+    -fx-background-color: #FF6666;
+    -fx-border-color: #990000;
+    -fx-border-width: 2px;
+    -fx-opacity: 0.9;
+}
+
+/* Weapon configuration styles */
+.position-grid {
+    -fx-alignment: center;
+    -fx-hgap: 5px;
+    -fx-padding: 10px;
+}
+
+.position-rectangle {
+    -fx-arc-width: 5px;
+    -fx-arc-height: 5px;
+}
+
+.position-label {
+    -fx-font-size: 10px;
+    -fx-font-weight: bold;
+}
+
+/* Section titles */
+.section-title {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 5px 0px;
+}
+
+/* Button styles */
+.action-button {
+    -fx-font-size: 12px;
+    -fx-padding: 5px 10px;
+}

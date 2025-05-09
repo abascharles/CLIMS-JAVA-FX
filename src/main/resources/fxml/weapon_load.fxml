@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
+<?import java.net.URL?>
+
+<BorderPane prefHeight="700.0" prefWidth="1000.0" styleClass="module-panel" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.aircraft.controller.WeaponLoadController">
+    <stylesheets>
+        <URL value="@../css/wepon_load.css" />
+    </stylesheets>
+
+    <center>
+        <VBox fx:id="mainPane" styleClass="main-pane">
+            <children>
+                <!-- Form for INSERT NEW DATA - will be shown instead of main pane when active -->
+                <VBox fx:id="formPane" managed="false" visible="false" styleClass="form-container-center" VBox.vgrow="ALWAYS">
+                    <!-- Title centered at the top -->
+                    <Label text="INSERT NEW DATA" alignment="CENTER" textAlignment="CENTER"
+                           styleClass="form-title-large" maxWidth="Infinity">
+                        <VBox.margin>
+                            <Insets bottom="20.0" />
+                        </VBox.margin>
+                    </Label>
+
+                    <!-- Modern Form in a white rounded box -->
+                    <VBox styleClass="modern-form-container" maxWidth="550" alignment="CENTER">
+                        <padding>
+                            <Insets top="25.0" right="25.0" bottom="25.0" left="25.0" />
+                        </padding>
+
+                        <!-- Form Fields with labels ABOVE each field -->
+                        <VBox spacing="15">
+                            <!-- Part Number -->
+                            <VBox spacing="5">
+                                <Label text="Part Number" styleClass="form-label-top" />
+                                <TextField fx:id="partNumberField" promptText="Insert part number"
+                                           styleClass="modern-form-field" />
+                            </VBox>
+
+                            <!-- Nomenclature -->
+                            <VBox spacing="5">
+                                <Label text="Nomenclature" styleClass="form-label-top" />
+                                <TextField fx:id="nomenclaturaField" promptText="Insert nomenclature"
+                                           styleClass="modern-form-field" />
+                            </VBox>
+
+                            <!-- Company Code -->
+                            <VBox spacing="5">
+                                <Label text="Company Code" styleClass="form-label-top" />
+                                <TextField fx:id="codiceDittaField" promptText="Insert code"
+                                           styleClass="modern-form-field" />
+                            </VBox>
+
+                            <!-- Mass (kg) -->
+                            <VBox spacing="5">
+                                <Label text="Mass (kg)" styleClass="form-label-top" />
+                                <TextField fx:id="massaField" promptText="Insert weight"
+                                           styleClass="modern-form-field" />
+                            </VBox>
+                        </VBox>
+                    </VBox>
+
+                    <!-- Action Buttons -->
+                    <HBox alignment="CENTER" spacing="15.0">
+                        <Button fx:id="saveButton" defaultButton="true" mnemonicParsing="false"
+                                onAction="#onSaveButtonClick" text="SAVE"
+                                styleClass="action-button-dark" />
+                        <Button mnemonicParsing="false"
+                                onAction="#onHomeButtonClick" text="HOME"
+                                styleClass="action-button-dark" />
+                        <VBox.margin>
+                            <Insets top="20.0" />
+                        </VBox.margin>
+                    </HBox>
+                </VBox>
+
+                <!-- Main weapon data screen -->
+                <VBox fx:id="mainScreen" alignment="TOP_CENTER" styleClass="main-pane">
+                    <!-- Title -->
+                    <Label text="WEAPON MASTER DATA" alignment="CENTER" textAlignment="CENTER" maxWidth="Infinity" styleClass="module-title">
+                        <font>
+                            <Font name="System Bold" size="28.0" />
+                        </font>
+                        <VBox.margin>
+                            <Insets top="40.0" />
+                        </VBox.margin>
+                    </Label>
+
+                    <!-- Image in the middle -->
+                    <HBox alignment="CENTER">
+                        <ImageView fitWidth="450.0" preserveRatio="true">
+                            <Image url="@../images/wepon_master_plane.png" />
+                        </ImageView>
+                        <VBox.margin>
+                            <Insets top="20.0" />
+                        </VBox.margin>
+                    </HBox>
+
+                    <!-- Buttons near the top -->
+                    <HBox alignment="CENTER" spacing="20.0">
+                        <Button mnemonicParsing="false" onAction="#onInsertNewDataClick"
+                                styleClass="action-button"
+                                text="INSERT NEW DATA" prefWidth="200.0" prefHeight="35.0" />
+                        <Button mnemonicParsing="false" onAction="#onViewWeaponListClick"
+                                styleClass="action-button"
+                                text="VIEW WEAPON LIST" prefWidth="200.0" prefHeight="35.0" />
+                        <VBox.margin>
+                            <Insets top="40.0" />
+                        </VBox.margin>
+                    </HBox>
+
+                    <!-- Add padding to push everything up -->
+                    <VBox VBox.vgrow="ALWAYS">
+                        <VBox.margin>
+                            <Insets top="20.0" />
+                        </VBox.margin>
+                    </VBox>
+                </VBox>
+
+                <!-- List View - UPDATED with centered title and button at bottom -->
+                <VBox fx:id="listPane" managed="false" visible="false" styleClass="list-pane" VBox.vgrow="ALWAYS">
+                    <!-- Centered title at the top -->
+                    <VBox alignment="CENTER">
+                        <Label text="VIEW WEAPON LIST" styleClass="form-title-large" alignment="CENTER" maxWidth="Infinity">
+                            <VBox.margin>
+                                <Insets top="20.0" bottom="20.0" />
+                            </VBox.margin>
+                        </Label>
+                    </VBox>
+
+                    <!-- Table with highlighted borders and matching header font -->
+                    <TableView fx:id="weaponTableView" styleClass="weapon-table" VBox.vgrow="ALWAYS">
+                        <columns>
+                            <TableColumn fx:id="partNumberColumn" prefWidth="150.0" text="Part Number" />
+                            <TableColumn fx:id="nomenclaturaColumn" prefWidth="200.0" text="Nomenclature" />
+                            <TableColumn fx:id="codiceDittaColumn" prefWidth="150.0" text="Company Code" />
+                            <TableColumn fx:id="massaColumn" prefWidth="100.0" text="Mass (kg)" />
+                        </columns>
+                        <VBox.margin>
+                            <Insets left="20.0" right="20.0" />
+                        </VBox.margin>
+                    </TableView>
+
+                    <!-- Home button at bottom right -->
+                    <HBox alignment="BOTTOM_RIGHT">
+                        <Button fx:id="homeButton" mnemonicParsing="false"
+                                onAction="#onHomeButtonClick" text="HOME"
+                                styleClass="action-button-dark" />
+                        <padding>
+                            <Insets bottom="20.0" right="20.0" top="20.0" />
+                        </padding>
+                    </HBox>
+                </VBox>
+            </children>
+        </VBox>
+    </center>
+</BorderPane>
