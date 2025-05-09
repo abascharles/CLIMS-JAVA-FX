@@ -1,6 +1,7 @@
 package com.aircraft.dao;
 
 import com.aircraft.model.Mission;
+import com.aircraft.model.WeaponStatus;
 import com.aircraft.util.DBUtil;
 
 import java.sql.*;
@@ -425,6 +426,127 @@ public class MissionDAO {
         }
 
         return missions;
+    }
+    // Add these methods to your existing MissionDAO class
+
+    /**
+     * Retrieves a mission by its ID.
+     *
+     * @param missionId The ID of the mission to retrieve
+     * @return The Mission object, or null if not found
+     */
+    public Mission getMissionById(int missionId) {
+        Mission mission = null;
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = DBUtil.getConnection();
+            String query = "SELECT * FROM missione WHERE ID = ?";
+
+            stmt = conn.prepareStatement(query);
+            stmt.setInt(1, missionId);
+
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                mission = new Mission();
+                mission.setId(rs.getInt("ID"));
+                mission.setMatricolaVelivolo(rs.getString("MatricolaVelivolo"));
+                mission.setDataMissione(rs.getDate("DataMissione"));
+                mission.setNumeroVolo(rs.getInt("NumeroVolo"));
+                mission.setOraPartenza(rs.getTime("OraPartenza"));
+                mission.setOraArrivo(rs.getTime("OraArrivo"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(conn, stmt, rs);
+        }
+
+        return mission;
+    }
+
+    /**
+     * Retrieves flight data for a specific mission.
+     *
+     * @param missionId The ID of the mission to retrieve flight data for
+     * @return An array containing [GloadMax, GloadMin, QuotaMedia, VelocitaMassima]
+     */
+    public Object[] getFlightDataForMission(int missionId) {
+        Object[] flightData = new Object[4];
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = DBUtil.getConnection();
+            String query = "SELECT dr.GloadMax, dr.GloadMin, dr.QuotaMedia, dr.VelocitaMassima " +
+                    "FROM dati_registrati dr " +
+                    "JOIN missione m ON dr.MatricolaVelivolo = m.MatricolaVelivolo AND dr.NumeroVolo = m.NumeroVolo " +
+                    "WHERE m.ID = ?";
+
+            stmt = conn.prepareStatement(query);
+            stmt.setInt(1, missionId);
+
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                flightData[0] = rs.getBigDecimal("GloadMax");
+                flightData[1] = rs.getBigDecimal("GloadMin");
+                flightData[2] = rs.getInt("QuotaMedia");
+                flightData[3] = rs.getInt("VelocitaMassima");
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(conn, stmt, rs);
+        }
+
+        return flightData;
+    }
+
+    /**
+     * Retrieves weapons data (launchers and missiles) for a specific mission.
+     *
+     * @param missionId The ID of the mission to retrieve weapons data for
+     * @return A list of WeaponStatus objects
+     */
+    public List<WeaponStatus> getWeaponsForMission(int missionId) {
+        List<WeaponStatus> weapons = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = DBUtil.getConnection();
+            String query = "SELECT smm.PosizioneVelivolo, smm.Lanciatore_PartNumber, smm.Lanciatore_SerialNumber, " +
+                    "smm.PartNumber AS MissilePartNumber, smm.Nomenclatura AS MissileNomenclatura, smm.Stato " +
+                    "FROM stato_missili_missione smm " +
+                    "WHERE smm.ID_Missione = ? " +
+                    "ORDER BY smm.PosizioneVelivolo";
+
+            stmt = conn.prepareStatement(query);
+            stmt.setInt(1, missionId);
+
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                WeaponStatus weapon = new WeaponStatus();
+                weapon.setPosition(rs.getString("PosizioneVelivolo"));
+                weapon.setLauncherPartNumber(rs.getString("Lanciatore_PartNumber"));
+                weapon.setLauncherSerialNumber(rs.getString("Lanciatore_SerialNumber"));
+                weapon.setMissilePartNumber(rs.getString("MissilePartNumber"));
+                weapon.setMissileName(rs.getString("MissileNomenclatura"));
+                weapon.setStatus(rs.getString("Stato"));
+
+                weapons.add(weapon);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(conn, stmt, rs);
+        }
+
+        return weapons;
     }
 
     /**

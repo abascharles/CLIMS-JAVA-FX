@@ -2,6 +2,8 @@ package com.aircraft.util;
 
 import com.aircraft.model.LauncherMission;
 import com.aircraft.model.LauncherStatus;
+import com.aircraft.model.Mission;
+import com.aircraft.model.WeaponStatus;
 import com.itextpdf.kernel.colors.ColorConstants;
 import com.itextpdf.kernel.colors.DeviceRgb;
 import com.itextpdf.kernel.pdf.PdfDocument;
@@ -20,6 +22,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.text.DecimalFormat;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -65,6 +68,110 @@ public class PDFGenerator {
                     .setTextAlignment(TextAlignment.CENTER)
                     .setItalic()
                     .setMarginTop(10));
+        }
+
+        // Close document
+        document.close();
+    }
+
+    /**
+     * Generates a mission report as a PDF.
+     *
+     * @param file The output file
+     * @param mission The mission data
+     * @param weapons The weapons (launchers and missiles) data
+     * @throws IOException If an I/O error occurs
+     */
+    public void generateMissionReport(File file, Mission mission, WeaponStatus[] weapons) throws IOException {
+        // Create PDF document
+        PdfWriter writer = new PdfWriter(file);
+        PdfDocument pdf = new PdfDocument(writer);
+        Document document = new Document(pdf, PageSize.A4);
+        document.setMargins(36, 36, 36, 36);
+
+        // Add title
+        document.add(new Paragraph("Mission Report #" + mission.getId())
+                .setBold()
+                .setFontSize(20)
+                .setTextAlignment(TextAlignment.CENTER)
+                .setMarginBottom(20));
+
+        // Add generation info
+        document.add(new Paragraph("Generated: " + getCurrentDateTime())
+                .setFontSize(10)
+                .setTextAlignment(TextAlignment.RIGHT)
+                .setMarginBottom(20));
+
+        // Add mission details section
+        document.add(new Paragraph("Mission Information")
+                .setBold()
+                .setFontSize(16)
+                .setMarginBottom(10));
+
+        // Create mission info table
+        Table missionTable = new Table(UnitValue.createPercentArray(new float[]{40, 60}));
+        missionTable.setWidth(UnitValue.createPercentValue(100));
+
+        addInfoRow(missionTable, "Aircraft:", mission.getMatricolaVelivolo());
+        addInfoRow(missionTable, "Flight Number:", String.valueOf(mission.getNumeroVolo()));
+        addInfoRow(missionTable, "Date:", mission.getDataMissione().toString());
+
+        if (mission.getOraPartenza() != null) {
+            addInfoRow(missionTable, "Departure Time:", mission.getOraPartenza().toString());
+        }
+
+        if (mission.getOraArrivo() != null) {
+            addInfoRow(missionTable, "Arrival Time:", mission.getOraArrivo().toString());
+        }
+
+        if (mission.getOraPartenza() != null && mission.getOraArrivo() != null) {
+            // Calculate duration
+            LocalTime depart = mission.getOraPartenza().toLocalTime();
+            LocalTime arrive = mission.getOraArrivo().toLocalTime();
+            long durationMinutes = java.time.Duration.between(depart, arrive).toMinutes();
+            String durationStr = String.format("%02d:%02d", durationMinutes / 60, durationMinutes % 60);
+
+            addInfoRow(missionTable, "Duration:", durationStr);
+        }
+
+        document.add(missionTable);
+        document.add(new Paragraph(" ").setMarginBottom(10));
+
+        // Add weapons section
+        document.add(new Paragraph("Launchers and Missiles")
+                .setBold()
+                .setFontSize(16)
+                .setMarginBottom(10));
+
+        if (weapons != null && weapons.length > 0) {
+            // Create weapons table
+            Table weaponsTable = new Table(UnitValue.createPercentArray(
+                    new float[]{15, 20, 20, 20, 20, 15}));
+            weaponsTable.setWidth(UnitValue.createPercentValue(100));
+
+            // Add headers
+            weaponsTable.addHeaderCell(createHeaderCell("Position"));
+            weaponsTable.addHeaderCell(createHeaderCell("Launcher P/N"));
+            weaponsTable.addHeaderCell(createHeaderCell("Launcher S/N"));
+            weaponsTable.addHeaderCell(createHeaderCell("Missile P/N"));
+            weaponsTable.addHeaderCell(createHeaderCell("Missile Name"));
+            weaponsTable.addHeaderCell(createHeaderCell("Status"));
+
+            // Add data rows
+            for (WeaponStatus weapon : weapons) {
+                weaponsTable.addCell(weapon.getPosition());
+                weaponsTable.addCell(weapon.getLauncherPartNumber());
+                weaponsTable.addCell(weapon.getLauncherSerialNumber());
+                weaponsTable.addCell(weapon.getMissilePartNumber());
+                weaponsTable.addCell(weapon.getMissileName());
+                weaponsTable.addCell(weapon.getStatus());
+            }
+
+            document.add(weaponsTable);
+        } else {
+            document.add(new Paragraph("No weapons data available for this mission")
+                    .setItalic()
+                    .setMarginBottom(10));
         }
 
         // Close document
@@ -162,7 +269,7 @@ public class PDFGenerator {
         labelCell.setBorder(null);
 
         Cell valueCell = new Cell();
-        valueCell.add(new Paragraph(value));
+        valueCell.add(new Paragraph(value != null ? value : ""));
         valueCell.setBorder(null);
 
         table.addCell(labelCell);

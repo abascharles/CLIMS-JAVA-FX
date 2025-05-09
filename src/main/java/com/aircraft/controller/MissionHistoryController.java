@@ -9,9 +9,14 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.stage.FileChooser;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 import javafx.stage.Window;
 
 import java.io.File;
@@ -181,26 +186,37 @@ public class MissionHistoryController {
      * @param mission The Mission object to view details for
      */
     private void viewMissionDetails(Mission mission) {
-        // This would typically open a detailed view or dialog
-        // For simplicity, we'll just show an information alert
-        Window owner = missionTable.getScene().getWindow();
+        try {
+            // Load the mission details FXML
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/mission_details.fxml"));
+            Parent root = loader.load();
 
-        String details = String.format(
-                "Mission ID: %d\n" +
-                        "Aircraft: %s\n" +
-                        "Flight Number: %d\n" +
-                        "Date: %s\n" +
-                        "Departure: %s\n" +
-                        "Arrival: %s",
-                mission.getId(),
-                mission.getMatricolaVelivolo(),
-                mission.getNumeroVolo(),
-                mission.getDataMissione(),
-                mission.getOraPartenza(),
-                mission.getOraArrivo()
-        );
+            // Get the controller
+            MissionDetailsController controller = loader.getController();
 
-        AlertUtils.showInformation(owner, "Mission Details", details);
+            // Set the mission to load data
+            controller.setMission(mission.getId());
+
+            // Create a new stage (window) for the details view
+            Stage detailsStage = new Stage();
+            detailsStage.setTitle("Mission Details - #" + mission.getId());
+            detailsStage.initModality(Modality.WINDOW_MODAL); // Modal dialog
+            detailsStage.initOwner(missionTable.getScene().getWindow()); // Set parent window
+
+            Scene scene = new Scene(root);
+            detailsStage.setScene(scene);
+
+            // Show the window
+            detailsStage.showAndWait();
+        } catch (IOException e) {
+            // Show error alert if there's a problem loading the view
+            AlertUtils.showError(
+                    missionTable.getScene().getWindow(),
+                    "Error Opening Details",
+                    "Error opening mission details: " + e.getMessage()
+            );
+            e.printStackTrace();
+        }
     }
 
     /**

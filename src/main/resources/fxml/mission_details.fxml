@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<BorderPane prefHeight="700.0" prefWidth="900.0" styleClass="module-panel" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="com.aircraft.controller.MissionDetailsController">
+    <top>
+        <VBox spacing="10.0" BorderPane.alignment="CENTER">
+            <children>
+                <HBox alignment="CENTER_LEFT" spacing="15.0">
+                    <children>
+                        <Label text="Mission Details - View Only" textFill="#1a365d">
+                            <font>
+                                <Font name="System Bold" size="24.0" />
+                            </font>
+                        </Label>
+                        <Label fx:id="missionIdLabel" text="Mission ID: #" textFill="#1a365d">
+                            <font>
+                                <Font size="18.0" />
+                            </font>
+                        </Label>
+                    </children>
+                </HBox>
+                <Separator />
+            </children>
+            <padding>
+                <Insets bottom="10.0" left="15.0" right="15.0" top="10.0" />
+            </padding>
+        </VBox>
+    </top>
+    <center>
+        <ScrollPane fitToWidth="true" BorderPane.alignment="CENTER">
+            <content>
+                <VBox spacing="15.0">
+                    <padding>
+                        <Insets bottom="15.0" left="15.0" right="15.0" top="15.0" />
+                    </padding>
+                    <children>
+                        <!-- Mission Basic Info Section -->
+                        <Label text="Mission Information" styleClass="section-title">
+                            <font>
+                                <Font name="System Bold" size="16.0" />
+                            </font>
+                        </Label>
+                        <GridPane hgap="10.0" vgap="10.0" styleClass="report-form">
+                            <columnConstraints>
+                                <javafx.scene.layout.ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="150.0" minWidth="150.0" prefWidth="150.0" />
+                                <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" minWidth="200.0" prefWidth="300.0" />
+                                <javafx.scene.layout.ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="150.0" minWidth="150.0" prefWidth="150.0" />
+                                <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" minWidth="200.0" prefWidth="300.0" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <javafx.scene.layout.RowConstraints minHeight="30.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                                <javafx.scene.layout.RowConstraints minHeight="30.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                                <javafx.scene.layout.RowConstraints minHeight="30.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                            </rowConstraints>
+                            <children>
+                                <Label text="Aircraft:" />
+                                <Label text="Flight Number:" GridPane.rowIndex="1" />
+                                <Label text="Mission Date:" GridPane.rowIndex="2" />
+                                <Label text="Departure Time:" GridPane.columnIndex="2" />
+                                <Label text="Arrival Time:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+                                <Label text="Duration:" GridPane.columnIndex="2" GridPane.rowIndex="2" />
+
+                                <TextField fx:id="aircraftField" editable="false" GridPane.columnIndex="1" />
+                                <TextField fx:id="flightNumberField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                                <TextField fx:id="missionDateField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+                                <TextField fx:id="departureTimeField" editable="false" GridPane.columnIndex="3" />
+                                <TextField fx:id="arrivalTimeField" editable="false" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                                <TextField fx:id="durationField" editable="false" GridPane.columnIndex="3" GridPane.rowIndex="2" />
+                            </children>
+                            <padding>
+                                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                            </padding>
+                        </GridPane>
+
+                        <!-- Flight Data Section -->
+                        <Label text="Flight Data" styleClass="section-title">
+                            <font>
+                                <Font name="System Bold" size="16.0" />
+                            </font>
+                        </Label>
+                        <GridPane hgap="10.0" vgap="10.0" styleClass="report-form">
+                            <columnConstraints>
+                                <javafx.scene.layout.ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="150.0" minWidth="150.0" prefWidth="150.0" />
+                                <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" minWidth="200.0" prefWidth="300.0" />
+                                <javafx.scene.layout.ColumnConstraints halignment="RIGHT" hgrow="SOMETIMES" maxWidth="150.0" minWidth="150.0" prefWidth="150.0" />
+                                <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" minWidth="200.0" prefWidth="300.0" />
+                            </columnConstraints>
+                            <rowConstraints>
+                                <javafx.scene.layout.RowConstraints minHeight="30.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                                <javafx.scene.layout.RowConstraints minHeight="30.0" prefHeight="30.0" vgrow="SOMETIMES" />
+                            </rowConstraints>
+                            <children>
+                                <Label text="Max G-Load:" />
+                                <Label text="Min G-Load:" GridPane.rowIndex="1" />
+                                <Label text="Average Altitude:" GridPane.columnIndex="2" />
+                                <Label text="Max Speed:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
+
+                                <TextField fx:id="maxGLoadField" editable="false" GridPane.columnIndex="1" />
+                                <TextField fx:id="minGLoadField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="1" />
+                                <TextField fx:id="avgAltitudeField" editable="false" GridPane.columnIndex="3" />
+                                <TextField fx:id="maxSpeedField" editable="false" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+                            </children>
+                            <padding>
+                                <Insets bottom="10.0" left="10.0" right="10.0" top="10.0" />
+                            </padding>
+                        </GridPane>
+
+                        <!-- Launchers and Missiles Section -->
+                        <Label text="Launchers and Missiles" styleClass="section-title">
+                            <font>
+                                <Font name="System Bold" size="16.0" />
+                            </font>
+                        </Label>
+                        <TableView fx:id="weaponsTable" prefHeight="200.0">
+                            <columns>
+                                <TableColumn fx:id="positionColumn" prefWidth="100.0" text="Position" />
+                                <TableColumn fx:id="launcherPNColumn" prefWidth="120.0" text="Launcher P/N" />
+                                <TableColumn fx:id="launcherSNColumn" prefWidth="120.0" text="Launcher S/N" />
+                                <TableColumn fx:id="missilePNColumn" prefWidth="120.0" text="Missile P/N" />
+                                <TableColumn fx:id="missileNameColumn" prefWidth="150.0" text="Missile Name" />
+                                <TableColumn fx:id="statusColumn" prefWidth="100.0" text="Status" />
+                            </columns>
+                        </TableView>
+
+                        <!-- Buttons -->
+                        <HBox alignment="CENTER" spacing="15.0">
+                            <children>
+                                <Button fx:id="closeButton" mnemonicParsing="false" onAction="#onCloseButtonClick" styleClass="primary-button" text="Close" />
+                                <Button fx:id="exportButton" mnemonicParsing="false" onAction="#onExportButtonClick" styleClass="secondary-button" text="Export Report" />
+                            </children>
+                            <padding>
+                                <Insets bottom="20.0" top="15.0" />
+                            </padding>
+                        </HBox>
+                    </children>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </center>
+</BorderPane>
