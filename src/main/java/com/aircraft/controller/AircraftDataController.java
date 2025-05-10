@@ -1,213 +1,219 @@
 package com.aircraft.controller;
 
-import com.aircraft.dao.AircraftDAO;
-import com.aircraft.model.Aircraft;
-import com.aircraft.util.AlertUtils;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
-import javafx.event.ActionEvent;
-import javafx.fxml.FXML;
-import javafx.scene.control.*;
-import javafx.scene.control.cell.PropertyValueFactory;
-import javafx.scene.layout.HBox;
-import javafx.stage.Window;
+ import com.aircraft.dao.AircraftDAO;
+ import com.aircraft.model.Aircraft;
+ import com.aircraft.util.AlertUtils;
+ import javafx.collections.FXCollections;
+ import javafx.collections.ObservableList;
+ import javafx.event.ActionEvent;
+ import javafx.fxml.FXML;
+ import javafx.scene.control.*;
+ import javafx.scene.control.cell.PropertyValueFactory;
+ import javafx.scene.layout.VBox;
+ import javafx.stage.Window;
 
-import java.util.List;
+ import java.util.List;
 
-/**
- * Controller for the Aircraft Data management screen.
- * Handles creating, updating, and deleting aircraft records.
- */
-public class AircraftDataController {
+ /**
+  * Controller for the Aircraft Data management screen.
+  * Handles creating, updating, and deleting aircraft records.
+  */
+ public class AircraftDataController {
 
-    @FXML
-    private TextField matricolaVelivoloField;
+     @FXML private VBox mainScreen;
+     @FXML private VBox formScreen;
+     @FXML private VBox listScreen;
 
-    @FXML
-    private Button saveButton;
+     @FXML private TextField registrationField;
+     @FXML private Button saveButton;
 
-    @FXML
-    private TableView<Aircraft> aircraftTable;
+     @FXML private TableView<Aircraft> aircraftTable;
+     @FXML private TableColumn<Aircraft, String> registrationColumn;
 
-    @FXML
-    private TableColumn<Aircraft, String> matricolaVelivoloColumn;
+     private final AircraftDAO aircraftDAO = new AircraftDAO();
+     private ObservableList<Aircraft> aircraftList = FXCollections.observableArrayList();
+     private Aircraft selectedAircraft = null;
 
-    @FXML
-    private TableColumn<Aircraft, Void> actionsColumn;
+     /**
+      * Initializes the controller after its root element has been processed.
+      */
+     @FXML
+     public void initialize() {
+         // Initialize table columns
+         registrationColumn.setCellValueFactory(new PropertyValueFactory<>("matricolaVelivolo"));
 
-    private final AircraftDAO aircraftDAO = new AircraftDAO();
-    private ObservableList<Aircraft> aircraftList = FXCollections.observableArrayList();
-    private Aircraft selectedAircraft = null;
+         // Load data
+         refreshAircraftTable();
+     }
 
-    /**
-     * Initializes the controller after its root element has been processed.
-     * Sets up event handlers and initializes UI components.
-     */
-    @FXML
-    public void initialize() {
-        // Set up table columns
-        matricolaVelivoloColumn.setCellValueFactory(new PropertyValueFactory<>("matricolaVelivolo"));
+     /**
+      * Handles navigation to the insert new data screen.
+      */
+     @FXML
+     protected void onInsertNewDataClick(ActionEvent event) {
+         mainScreen.setVisible(false);
+         mainScreen.setManaged(false);
+         formScreen.setVisible(true);
+         formScreen.setManaged(true);
+         listScreen.setVisible(false);
+         listScreen.setManaged(false);
 
-        // Set up action column with Edit and Delete buttons
-        setupActionsColumn();
+         clearForm();
+         selectedAircraft = null;
+     }
 
-        // Load aircraft data
-        refreshAircraftTable();
-    }
+     /**
+      * Handles navigation to the aircraft list screen.
+      */
+     @FXML
+     protected void onViewAircraftListClick(ActionEvent event) {
+         mainScreen.setVisible(false);
+         mainScreen.setManaged(false);
+         formScreen.setVisible(false);
+         formScreen.setManaged(false);
+         listScreen.setVisible(true);
+         listScreen.setManaged(true);
 
-    /**
-     * Sets up the actions column with Edit and Delete buttons.
-     */
-    private void setupActionsColumn() {
-        actionsColumn.setCellFactory(param -> new TableCell<>() {
-            private final Button editButton = new Button("Edit");
-            private final Button deleteButton = new Button("Delete");
-            private final HBox buttons = new HBox(5, editButton, deleteButton);
+         refreshAircraftTable();
+     }
 
-            {
-                // Set up button handlers
-                editButton.setOnAction(event -> {
-                    Aircraft aircraft = getTableView().getItems().get(getIndex());
-                    editAircraft(aircraft);
-                });
+     /**
+      * Handles navigation back to the main screen.
+      */
+     @FXML
+     protected void onBackButtonClick(ActionEvent event) {
+         mainScreen.setVisible(true);
+         mainScreen.setManaged(true);
+         formScreen.setVisible(false);
+         formScreen.setManaged(false);
+         listScreen.setVisible(false);
+         listScreen.setManaged(false);
+     }
 
-                deleteButton.setOnAction(event -> {
-                    Aircraft aircraft = getTableView().getItems().get(getIndex());
-                    deleteAircraft(aircraft);
-                });
-            }
+     /**
+      * Refreshes the aircraft table with data from the database.
+      */
+     private void refreshAircraftTable() {
+         List<Aircraft> aircraft = aircraftDAO.getAll();
+         aircraftList.clear();
+         aircraftList.addAll(aircraft);
+         aircraftTable.setItems(aircraftList);
+     }
 
-            @Override
-            protected void updateItem(Void item, boolean empty) {
-                super.updateItem(item, empty);
-                if (empty) {
-                    setGraphic(null);
-                } else {
-                    setGraphic(buttons);
-                }
-            }
-        });
-    }
+     /**
+      * Handles the "Save" button click.
+      */
+     @FXML
+     protected void onSaveButtonClick(ActionEvent event) {
+         Window owner = saveButton.getScene().getWindow();
 
-    /**
-     * Loads an aircraft for editing.
-     *
-     * @param aircraft The Aircraft object to edit
-     */
-    private void editAircraft(Aircraft aircraft) {
-        // Set selected aircraft
-        selectedAircraft = aircraft;
+         // Validate input fields
+         if (registrationField.getText().isEmpty()) {
+             AlertUtils.showError(owner, "Validation Error", "Matricola Velivolo is required");
+             return;
+         }
 
-        // Populate form fields
-        matricolaVelivoloField.setText(aircraft.getMatricolaVelivolo());
-    }
+         // Create or update aircraft object
+         Aircraft aircraft;
+         if (selectedAircraft == null) {
+             // Create new aircraft
+             aircraft = new Aircraft();
+         } else {
+             // Update existing aircraft
+             aircraft = selectedAircraft;
+         }
 
-    /**
-     * Deletes an aircraft after confirmation.
-     *
-     * @param aircraft The Aircraft object to delete
-     */
-    private void deleteAircraft(Aircraft aircraft) {
-        Window owner = aircraftTable.getScene().getWindow();
+         aircraft.setMatricolaVelivolo(registrationField.getText());
 
-        // Confirm deletion
-        boolean confirmed = AlertUtils.showConfirmation(
-                owner,
-                "Confirm Deletion",
-                "Are you sure you want to delete aircraft: " + aircraft.getMatricolaVelivolo() + "?"
-        );
+         // Save aircraft
+         boolean success;
+         if (selectedAircraft == null) {
+             // Check if aircraft already exists
+             if (aircraftDAO.exists(aircraft.getMatricolaVelivolo())) {
+                 AlertUtils.showError(owner, "Validation Error", "Aircraft with this Matricola already exists");
+                 return;
+             }
+             success = aircraftDAO.insert(aircraft);
+         } else {
+             success = aircraftDAO.update(aircraft);
+         }
 
-        if (confirmed) {
-            // Delete aircraft
-            boolean success = aircraftDAO.delete(aircraft.getMatricolaVelivolo());
+         if (success) {
+             AlertUtils.showInformation(owner, "Success", "Aircraft saved successfully");
+             clearForm();
+             selectedAircraft = null;
+             refreshAircraftTable();
 
-            if (success) {
-                AlertUtils.showInformation(owner, "Success", "Aircraft deleted successfully");
-                refreshAircraftTable();
-            } else {
-                AlertUtils.showError(owner, "Error", "Failed to delete aircraft");
-            }
-        }
-    }
+             // Return to main screen after saving
+             onBackButtonClick(event);
+         } else {
+             AlertUtils.showError(owner, "Error", "Failed to save aircraft");
+         }
+     }
 
-    /**
-     * Refreshes the aircraft table with data from the database.
-     */
-    private void refreshAircraftTable() {
-        List<Aircraft> aircraft = aircraftDAO.getAll();
-        aircraftList.clear();
-        aircraftList.addAll(aircraft);
-        aircraftTable.setItems(aircraftList);
-    }
+     /**
+      * Handles the "Clear" button click.
+      */
+     @FXML
+     protected void onClearButtonClick(ActionEvent event) {
+         clearForm();
+         selectedAircraft = null;
+     }
 
-    /**
-     * Handles the "Save" button click.
-     * Validates and saves the aircraft data to the database.
-     *
-     * @param event The ActionEvent object
-     */
-    @FXML
-    protected void onSaveButtonClick(ActionEvent event) {
-        Window owner = saveButton.getScene().getWindow();
+     /**
+      * Clears all form fields.
+      */
+     private void clearForm() {
+         registrationField.clear();
+     }
 
-        // Validate input fields
-        if (matricolaVelivoloField.getText().isEmpty()) {
-            AlertUtils.showError(owner, "Validation Error", "Matricola Velivolo is required");
-            return;
-        }
+     /**
+      * Handles the "Edit" button click for a selected aircraft.
+      */
+     @FXML
+     protected void onEditButtonClick(ActionEvent event) {
+         Aircraft aircraft = aircraftTable.getSelectionModel().getSelectedItem();
+         if (aircraft != null) {
+             selectedAircraft = aircraft;
 
-        // Create or update aircraft object
-        Aircraft aircraft;
-        if (selectedAircraft == null) {
-            // Create new aircraft
-            aircraft = new Aircraft();
-        } else {
-            // Update existing aircraft
-            aircraft = selectedAircraft;
-        }
+             // Populate form fields
+             registrationField.setText(aircraft.getMatricolaVelivolo());
 
-        aircraft.setMatricolaVelivolo(matricolaVelivoloField.getText());
+             // Switch to form screen for editing
+             mainScreen.setVisible(false);
+             mainScreen.setManaged(false);
+             formScreen.setVisible(true);
+             formScreen.setManaged(true);
+             listScreen.setVisible(false);
+             listScreen.setManaged(false);
+         }
+     }
 
-        // Save aircraft
-        boolean success;
-        if (selectedAircraft == null) {
-            // Check if aircraft already exists
-            if (aircraftDAO.exists(aircraft.getMatricolaVelivolo())) {
-                AlertUtils.showError(owner, "Validation Error", "Aircraft with this Matricola already exists");
-                return;
-            }
+     /**
+      * Handles the "Delete" button click for a selected aircraft.
+      */
+     @FXML
+     protected void onDeleteButtonClick(ActionEvent event) {
+         Aircraft aircraft = aircraftTable.getSelectionModel().getSelectedItem();
+         if (aircraft != null) {
+             Window owner = aircraftTable.getScene().getWindow();
 
-            success = aircraftDAO.insert(aircraft);
-        } else {
-            success = aircraftDAO.update(aircraft);
-        }
+             boolean confirmed = AlertUtils.showConfirmation(
+                     owner,
+                     "Confirm Deletion",
+                     "Are you sure you want to delete aircraft: " + aircraft.getMatricolaVelivolo() + "?"
+             );
 
-        if (success) {
-            AlertUtils.showInformation(owner, "Success", "Aircraft saved successfully");
-            clearForm();
-            selectedAircraft = null;
-            refreshAircraftTable();
-        } else {
-            AlertUtils.showError(owner, "Error", "Failed to save aircraft");
-        }
-    }
+             if (confirmed) {
+                 boolean success = aircraftDAO.delete(aircraft.getMatricolaVelivolo());
 
-    /**
-     * Handles the "Clear" button click.
-     * Clears the form fields.
-     *
-     * @param event The ActionEvent object
-     */
-    @FXML
-    protected void onClearButtonClick(ActionEvent event) {
-        clearForm();
-        selectedAircraft = null;
-    }
-
-    /**
-     * Clears all form fields.
-     */
-    private void clearForm() {
-        matricolaVelivoloField.clear();
-    }
-}
+                 if (success) {
+                     AlertUtils.showInformation(owner, "Success", "Aircraft deleted successfully");
+                     refreshAircraftTable();
+                 } else {
+                     AlertUtils.showError(owner, "Error", "Failed to delete aircraft");
+                 }
+             }
+         }
+     }
+ }

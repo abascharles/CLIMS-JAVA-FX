@@ -9,6 +9,7 @@ import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.VBox;
 import javafx.stage.Window;
 
 import java.math.BigDecimal;
@@ -17,6 +18,15 @@ import java.math.BigDecimal;
  * Controller for the Launcher management screen.
  */
 public class LauncherController {
+
+    @FXML
+    private VBox mainScreen;
+
+    @FXML
+    private VBox formScreen;
+
+    @FXML
+    private VBox listScreen;
 
     @FXML
     private TextField partNumberField;
@@ -65,6 +75,50 @@ public class LauncherController {
 
         // Load data
         refreshLauncherTable();
+    }
+
+    /**
+     * Handles navigation to the insert new data screen.
+     */
+    @FXML
+    protected void onInsertNewDataClick(ActionEvent event) {
+        mainScreen.setVisible(false);
+        mainScreen.setManaged(false);
+        formScreen.setVisible(true);
+        formScreen.setManaged(true);
+        listScreen.setVisible(false);
+        listScreen.setManaged(false);
+
+        clearForm();
+        selectedLauncher = null;
+    }
+
+    /**
+     * Handles navigation to the launcher list screen.
+     */
+    @FXML
+    protected void onViewLauncherListClick(ActionEvent event) {
+        mainScreen.setVisible(false);
+        mainScreen.setManaged(false);
+        formScreen.setVisible(false);
+        formScreen.setManaged(false);
+        listScreen.setVisible(true);
+        listScreen.setManaged(true);
+
+        refreshLauncherTable();
+    }
+
+    /**
+     * Handles navigation back to the main screen.
+     */
+    @FXML
+    protected void onBackButtonClick(ActionEvent event) {
+        mainScreen.setVisible(true);
+        mainScreen.setManaged(true);
+        formScreen.setVisible(false);
+        formScreen.setManaged(false);
+        listScreen.setVisible(false);
+        listScreen.setManaged(false);
     }
 
     /**
@@ -129,6 +183,9 @@ public class LauncherController {
             clearForm();
             selectedLauncher = null;
             refreshLauncherTable();
+
+            // Return to main screen after saving
+            onBackButtonClick(event);
         } else {
             AlertUtils.showError(owner, "Error", "Failed to save launcher");
         }
@@ -167,6 +224,14 @@ public class LauncherController {
             nomenclaturaField.setText(launcher.getNomenclatura());
             codiceDittaField.setText(launcher.getCodiceDitta());
             oreVitaOperativaField.setText(String.valueOf(launcher.getOreVitaOperativa()));
+
+            // Switch to form screen for editing
+            mainScreen.setVisible(false);
+            mainScreen.setManaged(false);
+            formScreen.setVisible(true);
+            formScreen.setManaged(true);
+            listScreen.setVisible(false);
+            listScreen.setManaged(false);
         }
     }
 

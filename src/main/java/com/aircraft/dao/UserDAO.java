@@ -7,6 +7,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 /**
  * Data Access Object for User-related database operations.
@@ -131,5 +132,37 @@ public class UserDAO {
         }
 
         return user;
+    }
+
+    /**
+     * Inserts a new user into the database.
+     *
+     * @param user The User object to insert
+     * @return true if insertion was successful, false otherwise
+     */
+    public boolean insert(User user) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        boolean success = false;
+
+        try {
+            conn = DBUtil.getConnection();
+
+            // SQL query to insert a new user
+            String sql = "INSERT INTO utenti (username, password) VALUES (?, ?)";
+            stmt = conn.prepareStatement(sql);
+            stmt.setString(1, user.getUsername());
+            stmt.setString(2, user.getPassword());
+
+            int rowsAffected = stmt.executeUpdate();
+            success = rowsAffected > 0;
+        } catch (SQLException e) {
+            System.err.println("Error inserting user: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(conn, stmt, null);
+        }
+
+        return success;
     }
 }
