@@ -469,15 +469,109 @@ public class MissionDAO {
         return missions;
     }
 
-    public Object[] getFlightDataForMission(int id) {
-        return new Object[0];
+
+    public Mission getMissionById(int id) {
+        return getById(id);
     }
 
-    public Mission getMissionById(int missionId) {
-        return null;
+    public Object[] getFlightDataForMission(int id) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        Object[] flightData = new Object[5]; // ID, MaxGLoad, MinGLoad, AvgAltitude, MaxSpeed
+
+        try {
+            conn = DBUtil.getConnection();
+
+            // Get basic mission data first
+            String sqlBasic = "SELECT ID FROM missione WHERE ID = ?";
+            stmt = conn.prepareStatement(sqlBasic);
+            stmt.setInt(1, id);
+            rs = stmt.executeQuery();
+
+            if (rs.next()) {
+                flightData[0] = rs.getInt("ID");
+
+                // Set default values
+                flightData[1] = 0.0; // MaxGLoad
+                flightData[2] = 0.0; // MinGLoad
+                flightData[3] = 0.0; // AvgAltitude
+                flightData[4] = 0.0; // MaxSpeed
+
+                rs.close();
+                stmt.close();
+
+                // Try to get flight metrics from missione_posizione_automatica if it exists
+                try {
+                    String sqlMetrics = "SELECT " +
+                                       "MAX(Accelerazione) AS MaxGLoad, " +
+                                       "MIN(Accelerazione) AS MinGLoad, " +
+                                       "AVG(Altitudine) AS AvgAltitude, " +
+                                       "MAX(Velocita) AS MaxSpeed " +
+                                       "FROM missione_posizione_automatica " +
+                                       "WHERE ID_Missione = ?";
+
+                    stmt = conn.prepareStatement(sqlMetrics);
+                    stmt.setInt(1, id);
+                    rs = stmt.executeQuery();
+
+                    if (rs.next()) {
+                        flightData[1] = rs.getDouble("MaxGLoad");
+                        flightData[2] = rs.getDouble("MinGLoad");
+                        flightData[3] = rs.getDouble("AvgAltitude");
+                        flightData[4] = rs.getDouble("MaxSpeed");
+                    }
+                } catch (SQLException e) {
+                    System.out.println("Note: Could not retrieve detailed flight metrics: " + e.getMessage());
+                    // Just continue with default values if this fails
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Error retrieving flight data for mission: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(conn, stmt, rs);
+        }
+
+        return flightData;
     }
 
     public List<WeaponStatus> getWeaponsForMission(int id) {
         return List.of();
     }
+    public int insertAndGetId(Mission mission) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet generatedKeys = null;
+        int generatedId = -1;
+
+        try {
+            conn = DBUtil.getConnection();
+            String query = "INSERT INTO missione (MatricolaVelivolo, NumeroVolo, DataMissione, OraPartenza, OraArrivo) " +
+                    "VALUES (?, ?, ?, ?, ?)";
+
+            stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+            stmt.setString(1, mission.getMatricolaVelivolo());
+            stmt.setInt(2, mission.getNumeroVolo());
+            stmt.setDate(3, mission.getDataMissione());
+            stmt.setTime(4, mission.getOraPartenza());
+            stmt.setTime(5, mission.getOraArrivo());
+
+            int affectedRows = stmt.executeUpdate();
+
+            if (affectedRows > 0) {
+                generatedKeys = stmt.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    generatedId = generatedKeys.getInt(1);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(conn, stmt, generatedKeys);
+        }
+
+        return generatedId;
+    }
 }
+

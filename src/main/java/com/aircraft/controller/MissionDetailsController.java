@@ -129,8 +129,23 @@ public class MissionDetailsController {
         } else {
             // Handle error - mission not found
             AlertUtils.showError(null, "Error", "Mission not found: ID " + missionId);
-            closeWindow();
+            clearAllFields();
         }
+    }
+
+    private void clearAllFields() {
+        missionIdLabel.setText("Mission ID: #N/A");
+        aircraftField.setText("");
+        flightNumberField.setText("");
+        missionDateField.setText("");
+        departureTimeField.setText("");
+        arrivalTimeField.setText("");
+        durationField.setText("");
+        maxGLoadField.setText("");
+        minGLoadField.setText("");
+        avgAltitudeField.setText("");
+        maxSpeedField.setText("");
+        weaponsList.clear();
     }
 
     /**
@@ -264,8 +279,11 @@ public class MissionDetailsController {
     /**
      * Closes the mission details window.
      */
-    private void closeWindow() {
-        Stage stage = (Stage) closeButton.getScene().getWindow();
-        stage.close();
-    }
+   private void closeWindow() {
+       // Add null checks to prevent the NullPointerException
+       if (closeButton != null && closeButton.getScene() != null && closeButton.getScene().getWindow() != null) {
+           Stage stage = (Stage) closeButton.getScene().getWindow();
+           stage.close();
+       }
+   }
 }
