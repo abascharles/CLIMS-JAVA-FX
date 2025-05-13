@@ -30,7 +30,7 @@ import javafx.stage.Window;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.sql.Time;
+import java.sql.*;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -110,11 +110,13 @@ public class MissionManagementController {
         private final String position;
         private String launcherId;
         private String weaponId;
+        private String launcherSerialNumber;
 
         public MissionWeaponConfig(String position) {
             this.position = position;
             this.launcherId = null;
             this.weaponId = null;
+            this.launcherSerialNumber = null;
         }
 
         public String getPosition() {
@@ -135,6 +137,14 @@ public class MissionManagementController {
 
         public void setWeaponId(String weaponId) {
             this.weaponId = weaponId;
+        }
+
+        public String getLauncherSerialNumber() {
+            return launcherSerialNumber;
+        }
+
+        public void setLauncherSerialNumber(String launcherSerialNumber) {
+            this.launcherSerialNumber = launcherSerialNumber;
         }
 
         public boolean hasLauncher() {
@@ -318,14 +328,16 @@ public class MissionManagementController {
             String position = entry.getKey();
             double[] coords = entry.getValue();
 
-            // Create a missile point indicator (rectangle)
+            // Create a missile point indicator (rectangle) - TRANSPARENT instead of filled
             Rectangle point = new Rectangle(24, 40);
-            point.getStyleClass().add("missile-position");
-            point.getStyleClass().add("missile-empty");
+            point.setFill(Color.TRANSPARENT); // Set to transparent instead of filled
+            point.setStroke(Color.GRAY); // Add a border
+            point.setStrokeWidth(1.5); // Make border visible
 
             // Create position label
             Text label = new Text(position);
             label.getStyleClass().add("missile-point-label");
+            label.setFill(Color.BLACK); // Ensure label is visible
 
             // Combine in a StackPane
             StackPane missilePoint = new StackPane(point, label);
@@ -381,6 +393,9 @@ public class MissionManagementController {
                     if (currentSelectedPosition != null) {
                         MissionWeaponConfig config = missilePositionsData.get(currentSelectedPosition);
                         config.setLauncherId(launcher.getPartNumber());
+
+                        // Set a default serial number (should be updated by user in real app)
+                        config.setLauncherSerialNumber("SN" + launcher.getPartNumber().substring(0, 4));
                     }
 
                     // Enable weapon selection only after launcher is selected
@@ -396,6 +411,7 @@ public class MissionManagementController {
                     MissionWeaponConfig config = missilePositionsData.get(currentSelectedPosition);
                     config.setLauncherId(null);
                     config.setWeaponId(null);
+                    config.setLauncherSerialNumber(null);
                 }
             }
         });
@@ -459,7 +475,9 @@ public class MissionManagementController {
         // Clear previous selection
         if (currentSelectedPosition != null && missilePointsMap.containsKey(currentSelectedPosition)) {
             Pane previousPoint = missilePointsMap.get(currentSelectedPosition);
-            previousPoint.getStyleClass().remove("missile-selected");
+            Rectangle rect = (Rectangle) ((StackPane) previousPoint).getChildren().get(0);
+            rect.setStroke(Color.GRAY); // Reset border color
+            rect.setStrokeWidth(1.5);
 
             // Restore original style based on configuration
             updateMissilePointUI(currentSelectedPosition);
@@ -468,9 +486,11 @@ public class MissionManagementController {
         // Set new selection
         currentSelectedPosition = position;
 
-        // Update UI
+        // Update UI - highlight with green border
         Pane selectedPoint = missilePointsMap.get(position);
-        selectedPoint.getStyleClass().add("missile-selected");
+        Rectangle rect = (Rectangle) ((StackPane) selectedPoint).getChildren().get(0);
+        rect.setStroke(Color.GREEN); // Highlight with green border
+        rect.setStrokeWidth(2.5); // Make border thicker
 
         // Update position panel
         selectedPositionLabel.setText("Position: " + position);
@@ -542,19 +562,16 @@ public class MissionManagementController {
         MissionWeaponConfig config = missilePositionsData.get(position);
         Pane missilePoint = missilePointsMap.get(position);
 
-        // Reset styles
         if (missilePoint != null) {
             Rectangle rect = (Rectangle) ((StackPane) missilePoint).getChildren().get(0);
 
-            // Clear existing state classes
-            rect.getStyleClass().removeAll("missile-empty", "missile-onboard", "missile-fired");
+            // Clear existing state styles
+            rect.setFill(Color.TRANSPARENT); // Reset fill
 
             // If the position has a launcher and weapon, show it as loaded
             if (config.isLoaded()) {
-                rect.getStyleClass().add("missile-onboard");
-            } else {
-                // Reset to default
-                rect.getStyleClass().add("missile-empty");
+                rect.setFill(Color.LIGHTGREEN); // Light green fill for loaded
+                rect.setOpacity(0.7);
             }
         }
     }
@@ -627,30 +644,157 @@ public class MissionManagementController {
             }
         }
 
-        // Save the mission
-        boolean success = missionDAO.insert(mission);
+        Connection conn = null;
+        boolean success = false;
 
-        if (success) {
-            // Get the mission ID
-            List<Mission> latestMissions = missionDAO.getLatestMissions(1);
-            if (!latestMissions.isEmpty()) {
-                mission = latestMissions.get(0);
+        try {
+            // Get database connection
+            conn = DBUtil.getConnection();
+            conn.setAutoCommit(false); // Start transaction
 
-                // In a real app, this would now save all the weapon configurations to the database
-                String message = "Mission saved successfully";
-                if (loadedPositions > 0) {
-                    message += " with " + loadedPositions + " configured positions";
+            // Save the mission first
+            success = missionDAO.insert(mission);
+
+            if (success) {
+                // Get the last inserted mission ID
+                List<Mission> latestMissions = missionDAO.getLatestMissions(1);
+                if (!latestMissions.isEmpty()) {
+                    mission = latestMissions.get(0);
+                    int missionId = mission.getId();
+
+                    // Now save the weapon configurations
+                    for (Map.Entry<String, MissionWeaponConfig> entry : missilePositionsData.entrySet()) {
+                        MissionWeaponConfig config = entry.getValue();
+
+                        // Skip if no launcher/weapon configured
+                        if (!config.isLoaded()) continue;
+
+                        // Get DB position code (may need mapping)
+                        String dbPosition = mapUiPositionToDbPosition(entry.getKey());
+
+                        // 1. Insert into stato_missili_missione table
+                        PreparedStatement stmt = conn.prepareStatement(
+                                "INSERT INTO stato_missili_missione (ID_Missione, PosizioneVelivolo, " +
+                                        "Lanciatore_PartNumber, Lanciatore_SerialNumber, PartNumber, Nomenclatura, Stato) " +
+                                        "VALUES (?, ?, ?, ?, ?, ?, ?)"
+                        );
+
+                        stmt.setInt(1, missionId);
+                        stmt.setString(2, dbPosition);
+                        stmt.setString(3, config.getLauncherId());
+                        stmt.setString(4, config.getLauncherSerialNumber());
+                        stmt.setString(5, config.getWeaponId());
+
+                        // Get weapon nomenclatura from DB
+                        Weapon weapon = weaponDAO.getByPartNumber(config.getWeaponId());
+                        stmt.setString(6, weapon != null ? weapon.getNomenclatura() : "Unknown");
+
+                        // Default status is "A_BORDO" (on board)
+                        stmt.setString(7, "A_BORDO");
+
+                        stmt.executeUpdate();
+                        stmt.close();
+
+                        // 2. Also insert into storico_carico and storico_lanciatore tables
+                        // Insert into storico_lanciatore
+                        stmt = conn.prepareStatement(
+                                "INSERT INTO storico_lanciatore (MatricolaVelivolo, PosizioneVelivolo, " +
+                                        "PartNumber, SerialNumber, DataInstallazione, DataRimozione) " +
+                                        "VALUES (?, ?, ?, ?, ?, NULL)"
+                        );
+
+                        stmt.setString(1, mission.getMatricolaVelivolo());
+                        stmt.setString(2, dbPosition);
+                        stmt.setString(3, config.getLauncherId());
+                        stmt.setString(4, config.getLauncherSerialNumber());
+                        stmt.setDate(5, mission.getDataMissione());
+
+                        stmt.executeUpdate();
+                        stmt.close();
+
+                        // Insert into storico_carico
+                        stmt = conn.prepareStatement(
+                                "INSERT INTO storico_carico (MatricolaVelivolo, PosizioneVelivolo, " +
+                                        "PartNumber, Nomenclatura, DataImbarco, DataSbarco) " +
+                                        "VALUES (?, ?, ?, ?, ?, NULL)"
+                        );
+
+                        stmt.setString(1, mission.getMatricolaVelivolo());
+                        stmt.setString(2, dbPosition);
+                        stmt.setString(3, config.getWeaponId());
+                        stmt.setString(4, weapon != null ? weapon.getNomenclatura() : "Unknown");
+                        stmt.setDate(5, mission.getDataMissione());
+
+                        stmt.executeUpdate();
+                        stmt.close();
+                    }
+
+                    // Commit transaction
+                    conn.commit();
+                    success = true;
+
+                    String message = "Mission saved successfully";
+                    if (loadedPositions > 0) {
+                        message += " with " + loadedPositions + " configured positions";
+                    }
+
+                    AlertUtils.showInformation(owner, "Success", message);
+
+                    // Clear form and reset UI
+                    clearForm();
+                } else {
+                    conn.rollback();
+                    AlertUtils.showError(owner, "Error", "Failed to get newly created mission");
+                    success = false;
                 }
-
-                AlertUtils.showInformation(owner, "Success", message);
-
-                // Clear form and reset UI
-                clearForm();
             } else {
-                AlertUtils.showError(owner, "Error", "Failed to get newly created mission");
+                conn.rollback();
+                AlertUtils.showError(owner, "Error", "Failed to save mission");
             }
-        } else {
-            AlertUtils.showError(owner, "Error", "Failed to save mission");
+        } catch (SQLException e) {
+            try {
+                if (conn != null) conn.rollback();
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+            AlertUtils.showError(owner, "Database Error", "Error saving mission: " + e.getMessage());
+            e.printStackTrace();
+            success = false;
+        } finally {
+            try {
+                if (conn != null) {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    /**
+     * Maps UI position identifier to database position code.
+     *
+     * @param uiPosition The UI position identifier (P1-P13)
+     * @return The corresponding database position code
+     */
+    private String mapUiPositionToDbPosition(String uiPosition) {
+        // Simple mapping for direct use
+        switch (uiPosition) {
+            case "P1": return "TIP 1";
+            case "P2": return "O/B 3";
+            case "P3": return "CTR 5";
+            case "P4": return "I/B 7";
+            case "P5": return "FWD 9";
+            case "P6": return "CL 13";
+            case "P7": return "CL 14";
+            case "P8": return "REA 12";
+            case "P9": return "FWD 10";
+            case "P10": return "I/B 8";
+            case "P11": return "CTR 6";
+            case "P12": return "O/B 4";
+            case "P13": return "TIP 2";
+            default: return uiPosition;
         }
     }
 
@@ -677,6 +821,7 @@ public class MissionManagementController {
             MissionWeaponConfig config = missilePositionsData.get(position);
             config.setLauncherId(null);
             config.setWeaponId(null);
+            config.setLauncherSerialNumber(null);
         }
 
         // Hide weapon selection panel
@@ -685,9 +830,12 @@ public class MissionManagementController {
 
         // Update UI
         for (Map.Entry<String, Pane> entry : missilePointsMap.entrySet()) {
-            Rectangle rect = (Rectangle) ((StackPane) entry.getValue()).getChildren().get(0);
-            rect.getStyleClass().removeAll("missile-onboard", "missile-fired", "missile-selected");
-            rect.getStyleClass().add("missile-empty");
+            StackPane pane = (StackPane) entry.getValue();
+            Rectangle rect = (Rectangle) pane.getChildren().get(0);
+
+            rect.setFill(Color.TRANSPARENT);
+            rect.setStroke(Color.GRAY);
+            rect.setStrokeWidth(1.5);
         }
 
         // Clear weapon selection
