@@ -22,6 +22,135 @@ public class MovementHistoryDAO {
      * @param partNumber The part number to search for
      * @return List of MovementHistory objects
      */
+
+
+public List<MovementHistory> getLauncherHistoryByPartNumber(String partNumber) {
+    List<MovementHistory> historyList = new ArrayList<>();
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    ResultSet rs = null;
+
+    try {
+        conn = DBUtil.getConnection();
+        String query = "SELECT part_number, item_type, item_name, serial_number, " +
+                "action_date, action_type, location, aircraft_id " +
+                "FROM vista_movement_history " +
+                "WHERE part_number = ? AND item_type = 'Launcher' " +
+                "ORDER BY action_date DESC";
+
+        stmt = conn.prepareStatement(query);
+        stmt.setString(1, partNumber);
+
+        rs = stmt.executeQuery();
+        while (rs.next()) {
+            MovementHistory history = new MovementHistory();
+            history.setPartNumber(rs.getString("part_number"));
+            history.setItemType(rs.getString("item_type"));
+            history.setItemName(rs.getString("item_name"));
+            history.setSerialNumber(rs.getString("serial_number"));
+
+            // Handle date conversion from SQL Date to LocalDate
+            java.sql.Date sqlDate = rs.getDate("action_date");
+            if (sqlDate != null) {
+                history.setDate(sqlDate.toLocalDate());
+            }
+
+            history.setActionType(rs.getString("action_type"));
+            history.setLocation(rs.getString("location"));
+            history.setAircraftId(rs.getString("aircraft_id"));
+
+            historyList.add(history);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    } finally {
+        DBUtil.closeResources(conn, stmt, rs);
+    }
+
+    return historyList;
+}
+
+public List<MovementHistory> getLoadHistoryByPartNumber(String partNumber) {
+    List<MovementHistory> historyList = new ArrayList<>();
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    ResultSet rs = null;
+
+    try {
+        conn = DBUtil.getConnection();
+        String query = "SELECT part_number, item_type, item_name, serial_number, " +
+                "action_date, action_type, location, aircraft_id " +
+                "FROM vista_movement_history " +
+                "WHERE part_number = ? AND item_type = 'Missile' " +
+                "ORDER BY action_date DESC";
+
+        stmt = conn.prepareStatement(query);
+        stmt.setString(1, partNumber);
+
+        rs = stmt.executeQuery();
+        while (rs.next()) {
+            MovementHistory history = new MovementHistory();
+            history.setPartNumber(rs.getString("part_number"));
+            history.setItemType(rs.getString("item_type"));
+            history.setItemName(rs.getString("item_name"));
+            history.setSerialNumber(rs.getString("serial_number"));
+
+            java.sql.Date sqlDate = rs.getDate("action_date");
+            if (sqlDate != null) {
+                history.setDate(sqlDate.toLocalDate());
+            }
+
+            history.setActionType(rs.getString("action_type"));
+            history.setLocation(rs.getString("location"));
+            history.setAircraftId(rs.getString("aircraft_id"));
+
+            historyList.add(history);
+        }
+    } catch (SQLException e) {
+        e.printStackTrace();
+    } finally {
+        DBUtil.closeResources(conn, stmt, rs);
+    }
+
+    return historyList;
+}
+
+public boolean insertMovementRecord(String partNumber, String itemType, String itemName,
+                                   String serialNumber, LocalDate actionDate,
+                                   String actionType, String location, String aircraftId) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    boolean success = false;
+
+    try {
+        conn = DBUtil.getConnection();
+        String query = "INSERT INTO vista_movement_history (part_number, item_type, item_name, " +
+                "serial_number, action_date, action_type, location, aircraft_id) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+        stmt = conn.prepareStatement(query);
+        stmt.setString(1, partNumber);
+        stmt.setString(2, itemType);
+        stmt.setString(3, itemName);
+        stmt.setString(4, serialNumber);
+        stmt.setDate(5, java.sql.Date.valueOf(actionDate));
+        stmt.setString(6, actionType);
+        stmt.setString(7, location);
+        stmt.setString(8, aircraftId);
+
+        int rowsAffected = stmt.executeUpdate();
+        success = rowsAffected > 0;
+    } catch (SQLException e) {
+        e.printStackTrace();
+    } finally {
+        DBUtil.closeResources(conn, stmt, null);
+    }
+
+    return success;
+}
+
+
+
     public List<MovementHistory> getByPartNumber(String partNumber) {
         List<MovementHistory> historyList = new ArrayList<>();
         Connection conn = null;

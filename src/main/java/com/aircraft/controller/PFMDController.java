@@ -601,11 +601,26 @@ public class PFMDController {
         String flightPart = selectedMissionStr.split(" - ")[1];
         currentFlightNumber = Integer.parseInt(flightPart.substring(flightPart.indexOf("#") + 1).split(" ")[0]);
 
-        // Load mission weapons configuration
+        // Load mission weapons configuration - this will show green squares for loaded missiles
         loadMissionWeapons(missionId);
 
-        // Load existing recorded data if available
-        loadRecordedData(selectedAircraft, currentFlightNumber);
+        // Clear form fields - user will enter these manually
+        clearFormFields();
+
+        // Display a message to the user
+        Window owner = aircraftComboBox.getScene().getWindow();
+        AlertUtils.showInformation(owner, "Mission Loaded",
+            "Missile configurations loaded. Please fill in flight data and mark fired missiles.");
+    }
+    /**
+     * Updates the styles of all missile positions based on their current status.
+     */
+    private void updateMissilePositionStyles() {
+        for (Map.Entry<String, Pane> entry : missilePointsMap.entrySet()) {
+            String position = entry.getKey();
+            Pane pane = entry.getValue();
+            updateMissilePositionStyle(pane, position);
+        }
     }
 
     /**
@@ -618,15 +633,15 @@ public class PFMDController {
         RecordedData data = recordedDataDAO.getByFlightNumber(aircraft, flightNumber);
 
         if (data != null) {
-            // Fill form fields with existing data
-            gloadMaxField.setText(data.getGloadMax().toString());
-            gloadMinField.setText(data.getGloadMin().toString());
-            quotaMediaField.setText(data.getQuotaMedia().toString());
-            velocitaMassimaField.setText(data.getVelocitaMassima().toString());
+            // DO NOT fill form fields with existing data - let user enter manually
+            // Instead clear the form fields
+            clearFormFields();
 
-            // Parse and apply missile status
-            parseStatoMissili(data.getStatoMissili());
-            updateMissilePositionStyles();
+            // Only parse and apply missile status if it exists
+            if (data.getStatoMissili() != null && !data.getStatoMissili().isEmpty()) {
+                parseStatoMissili(data.getStatoMissili());
+                updateMissilePositionStyles();
+            }
         } else {
             // Clear form fields for new data
             clearFormFields();
@@ -643,20 +658,13 @@ public class PFMDController {
         velocitaMassimaField.clear();
     }
 
-    /**
-     * Updates the missile position pane styles based on their status.
-     */
-    private void updateMissilePositionStyles() {
-        System.out.println("Updating missile position styles");
-        debugPrintMissileStatus();
-
-        // Update all missile positions in the map
-        for (Map.Entry<String, Pane> entry : missilePointsMap.entrySet()) {
-            String position = entry.getKey();
-            Pane pane = entry.getValue();
-            updateMissilePositionStyle(pane, position);
-        }
-    }
+   /**
+    * Updates the style of a single missile position pane.
+    * This method applies styles directly to the Rectangle rather than using CSS classes.
+    *
+    * @param pane The Pane object
+    * @param position The position identifier
+    */
 
     /**
      * Updates the style of a single missile position pane.

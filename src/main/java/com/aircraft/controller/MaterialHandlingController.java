@@ -100,29 +100,38 @@ public class MaterialHandlingController {
             return;
         }
 
-        // Determine item type (launcher or missile)
+        // Determine item type (launcher or missile/load)
         String itemType = movementHistoryDAO.getItemTypeByPartNumber(partNumber);
 
         if (itemType != null) {
             String itemName = movementHistoryDAO.getItemNameByPartNumber(partNumber);
             itemTypeLabel.setText("Item Type: " + itemType + (itemName != null ? " - " + itemName : ""));
+
+            // Retrieve movement history based on item type
+            List<MovementHistory> history;
+            if (itemType.equalsIgnoreCase("Launcher")) {
+                history = movementHistoryDAO.getLauncherHistoryByPartNumber(partNumber);
+            } else {
+                // Assuming any other type is a load/missile
+                history = movementHistoryDAO.getLoadHistoryByPartNumber(partNumber);
+            }
+
+            if (history.isEmpty()) {
+                AlertUtils.showInformation(owner, "No Records Found",
+                        "No movement history found for Part Number: " + partNumber);
+                historyList.clear();
+                historyTable.setItems(historyList);
+            } else {
+                // Update table with history data
+                historyList.clear();
+                historyList.addAll(history);
+                historyTable.setItems(historyList);
+            }
         } else {
             itemTypeLabel.setText("Unknown Part Number");
-        }
-
-        // Retrieve movement history for the part number
-        List<MovementHistory> history = movementHistoryDAO.getByPartNumber(partNumber);
-
-        if (history.isEmpty()) {
-            AlertUtils.showInformation(owner, "No Records Found",
-                    "No movement history found for Part Number: " + partNumber);
             historyList.clear();
-            historyTable.setItems(historyList);
-        } else {
-            // Update table with history data
-            historyList.clear();
-            historyList.addAll(history);
-            historyTable.setItems(historyList);
+            AlertUtils.showInformation(owner, "Unknown Part Number",
+                    "No information found for Part Number: " + partNumber);
         }
     }
 }
