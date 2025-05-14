@@ -394,8 +394,13 @@ public class MissionManagementController {
                         MissionWeaponConfig config = missilePositionsData.get(currentSelectedPosition);
                         config.setLauncherId(launcher.getPartNumber());
 
-                        // Set a default serial number (should be updated by user in real app)
-                        config.setLauncherSerialNumber("SN" + launcher.getPartNumber().substring(0, 4));
+                        // Set a default serial number - FIX: Check length before substring
+                        String partNumber = launcher.getPartNumber();
+                        String serialPrefix = partNumber.length() >= 4 ?
+                                partNumber.substring(0, 4) :
+                                partNumber; // Use whole string if it's too short
+
+                        config.setLauncherSerialNumber("SN" + serialPrefix);
                     }
 
                     // Enable weapon selection only after launcher is selected
@@ -530,19 +535,14 @@ public class MissionManagementController {
 
     /**
      * Handles the "Save Position" button click.
-     * Updates UI and stores position configuration in memory.
-     * NOTE: This does NOT save to the database yet - must click "Save Mission" for that.
-     */
-    /**
-     * Handles the "Save Position" button click.
-     * This will save both the position configuration AND the mission (if not already saved).
-     */
-
-    private Integer currentMissionId = null;
-    /**
-     * Handles the "Save Position" button click.
      * This will save both the position configuration AND the mission (if not already saved).
      * Uses a temporary fix to avoid position mapping issues.
+     */
+    private Integer currentMissionId = null;
+
+    /**
+     * Handles the "Save Position" button click.
+     * This will save both the position configuration AND the mission (if not already saved).
      */
     @FXML
     protected void onSavePositionClick(ActionEvent event) {
@@ -559,75 +559,82 @@ public class MissionManagementController {
         }
 
         // First, save the mission if it hasn't been saved yet
-        if (currentMissionId == null || currentMissionId <= 0) {
-            // Validate input fields for mission
-            Aircraft selectedAircraft = aircraftComboBox.getValue();
-            LocalDate missionDate = missionDatePicker.getValue();
-            String flightNumber = flightNumberField.getText();
-            String timeStart = timeStartField.getText();
-            String timeFinish = timeFinishField.getText();
+        // First, save the mission if it hasn't been saved yet
+if (currentMissionId == null || currentMissionId <= 0) {
+    // Mission validation
+    Aircraft selectedAircraft = aircraftComboBox.getValue();
+    LocalDate missionDate = missionDatePicker.getValue();
+    String flightNumber = flightNumberField.getText();
+    String timeStart = timeStartField.getText();
+    String timeFinish = timeFinishField.getText();
 
-            if (selectedAircraft == null ||
-                    missionDate == null ||
-                    flightNumber == null || flightNumber.isEmpty()) {
-                AlertUtils.showError(owner, "Validation Error",
-                        "Aircraft, date, and flight number are required");
-                return;
-            }
+    if (selectedAircraft == null || missionDate == null ||
+            flightNumber == null || flightNumber.isEmpty()) {
+        validationMessageLabel.setText("Aircraft, date, and flight number are required");
+        validationMessageLabel.setVisible(true);
+        return;
+    }
 
-            // Validate time fields format if they are not empty
-            boolean timeStartValid = timeStart.isEmpty() || validateTimeField(timeStartField);
-            boolean timeFinishValid = timeFinish.isEmpty() || validateTimeField(timeFinishField);
+    // Validate time fields format if not empty
+    boolean timeStartValid = timeStart.isEmpty() || validateTimeField(timeStartField);
+    boolean timeFinishValid = timeFinish.isEmpty() || validateTimeField(timeFinishField);
 
-            if (!timeStartValid || !timeFinishValid) {
-                AlertUtils.showError(owner, "Validation Error", "Please enter valid time values in HH:MM format");
-                return;
-            }
+    if (!timeStartValid || !timeFinishValid) {
+        validationMessageLabel.setText("Please enter valid time values in HH:MM format");
+        validationMessageLabel.setVisible(true);
+        return;
+    }
 
-            // Create a new mission
-            Mission mission = new Mission();
-            mission.setMatricolaVelivolo(selectedAircraft.getMatricolaVelivolo());
-            try {
-                mission.setNumeroVolo(Integer.parseInt(flightNumber));
-            } catch (NumberFormatException e) {
-                AlertUtils.showError(owner, "Validation Error", "Flight number must be a valid integer");
-                return;
-            }
-            mission.setDataMissione(java.sql.Date.valueOf(missionDate));
+    // Create mission object
+    Mission mission = new Mission();
+    mission.setMatricolaVelivolo(selectedAircraft.getMatricolaVelivolo());
+    try {
+        mission.setNumeroVolo(Integer.parseInt(flightNumber));
+    } catch (NumberFormatException e) {
+        validationMessageLabel.setText("Flight number must be a valid integer");
+        validationMessageLabel.setVisible(true);
+        return;
+    }
+    mission.setDataMissione(java.sql.Date.valueOf(missionDate));
 
-            // Convert time strings to SQL Time objects if not empty
-            if (!timeStart.isEmpty()) {
-                try {
-                    LocalTime localTimeStart = LocalTime.parse(timeStart, timeFormatter);
-                    mission.setOraPartenza(Time.valueOf(localTimeStart));
-                } catch (Exception e) {
-                    AlertUtils.showError(owner, "Error", "Invalid time format: " + e.getMessage());
-                    return;
-                }
-            }
-
-            if (!timeFinish.isEmpty()) {
-                try {
-                    LocalTime localTimeFinish = LocalTime.parse(timeFinish, timeFormatter);
-                    mission.setOraArrivo(Time.valueOf(localTimeFinish));
-                } catch (Exception e) {
-                    AlertUtils.showError(owner, "Error", "Invalid time format: " + e.getMessage());
-                    return;
-                }
-            }
-
-            // Save the mission and get its ID
-            int missionId = missionDAO.insertAndGetId(mission);
-            if (missionId <= 0) {
-                AlertUtils.showError(owner, "Error", "Failed to save mission");
-                return;
-            }
-
-            // Store the generated mission ID
-            currentMissionId = missionId;
-            System.out.println("Saved new mission with ID: " + currentMissionId);
+    // Convert time strings to SQL Time objects if not empty
+    if (!timeStart.isEmpty()) {
+        try {
+            LocalTime localTimeStart = LocalTime.parse(timeStart, timeFormatter);
+            mission.setOraPartenza(Time.valueOf(localTimeStart));
+        } catch (Exception e) {
+            validationMessageLabel.setText("Invalid time format");
+            validationMessageLabel.setVisible(true);
+            return;
         }
+    }
 
+    if (!timeFinish.isEmpty()) {
+        try {
+            LocalTime localTimeFinish = LocalTime.parse(timeFinish, timeFormatter);
+            mission.setOraArrivo(Time.valueOf(localTimeFinish));
+        } catch (Exception e) {
+            validationMessageLabel.setText("Invalid time format");
+            validationMessageLabel.setVisible(true);
+            return;
+        }
+    }
+
+    // Save mission and get ID
+    try {
+        currentMissionId = missionDAO.insertAndGetId(mission);
+        if (currentMissionId <= 0) {
+            validationMessageLabel.setText("Failed to save mission");
+            validationMessageLabel.setVisible(true);
+            return;
+        }
+    } catch (Exception e) {
+        validationMessageLabel.setText("Error saving mission: " + e.getMessage());
+        validationMessageLabel.setVisible(true);
+        e.printStackTrace();
+        return;
+    }
+}
         // Now save the position configuration
         Connection conn = null;
         PreparedStatement stmt = null;
@@ -637,17 +644,24 @@ public class MissionManagementController {
             conn = DBUtil.getConnection();
             conn.setAutoCommit(false);  // Start transaction
 
-            // TEMPORARY FIX: Use a known valid position instead of mapping
-            // String dbPosition = mapUiPositionToDbPosition(currentSelectedPosition);
-            String dbPosition = "P1";  // Use a known valid position that exists in the database
+            // Map UI position to database position
+            String dbPosition = mapUiPositionToDbPosition(currentSelectedPosition);
 
             System.out.println("Saving position: " + currentSelectedPosition + " -> " + dbPosition + " for mission: " + currentMissionId);
+            // Check if mission ID is still null after attempting to create it
+            if (currentMissionId == null || currentMissionId <= 0) {
+                validationMessageLabel.setText("Invalid mission ID. Please save the mission first.");
+                validationMessageLabel.setVisible(true);
+                return;
+            }
 
-            // Check if this position already has a configuration for this mission
+            // Now proceed with position saving
             String checkSql = "SELECT ID FROM stato_missili_missione WHERE ID_Missione = ? AND PosizioneVelivolo = ?";
             stmt = conn.prepareStatement(checkSql);
             stmt.setInt(1, currentMissionId);
             stmt.setString(2, dbPosition);
+
+            // Check if this position already has a configuration for this mission
             ResultSet rs = stmt.executeQuery();
 
             boolean exists = rs.next();
@@ -671,7 +685,7 @@ public class MissionManagementController {
                 if (config.getWeaponId() != null) {
                     weapon = weaponDAO.getByPartNumber(config.getWeaponId());
                 }
-                stmt.setString(4, weapon != null ? weapon.getNomenclatura() : "Unknown");
+                stmt.setString(4, weapon != null ? weapon.getNomenclatura() : null);
 
                 // Default status is "A_BORDO" (on board)
                 stmt.setString(5, "A_BORDO");
@@ -680,10 +694,8 @@ public class MissionManagementController {
 
                 stmt.executeUpdate();
                 stmt.close();
-                System.out.println("Updated existing configuration in stato_missili_missione");
             } else {
                 // Insert new configuration
-                // 1. Insert into stato_missili_missione table
                 String insertSql = "INSERT INTO stato_missili_missione (ID_Missione, PosizioneVelivolo, " +
                         "Lanciatore_PartNumber, Lanciatore_SerialNumber, PartNumber, Nomenclatura, Stato) " +
                         "VALUES (?, ?, ?, ?, ?, ?, ?)";
@@ -700,19 +712,18 @@ public class MissionManagementController {
                 if (config.getWeaponId() != null) {
                     weapon = weaponDAO.getByPartNumber(config.getWeaponId());
                 }
-                stmt.setString(6, weapon != null ? weapon.getNomenclatura() : "Unknown");
+                stmt.setString(6, weapon != null ? weapon.getNomenclatura() : null);
 
                 // Default status is "A_BORDO" (on board)
                 stmt.setString(7, "A_BORDO");
 
                 stmt.executeUpdate();
                 stmt.close();
-                System.out.println("Inserted new configuration into stato_missili_missione");
 
-                // Get mission data for storico tables
+                // Add to storico tables
                 Mission mission = missionDAO.getById(currentMissionId);
 
-                // 2. Check if already in storico_lanciatore
+                // Check if already in storico_lanciatore
                 String checkLanciatoreSql = "SELECT ID FROM storico_lanciatore WHERE " +
                         "MatricolaVelivolo = ? AND PosizioneVelivolo = ? AND PartNumber = ? AND SerialNumber = ?";
                 stmt = conn.prepareStatement(checkLanciatoreSql);
@@ -728,51 +739,59 @@ public class MissionManagementController {
                 if (!lanciatorExists) {
                     // Insert into storico_lanciatore
                     stmt = conn.prepareStatement(
-                            "INSERT INTO storico_lanciatore (MatricolaVelivolo, PosizioneVelivolo, " +
-                                    "PartNumber, SerialNumber, DataInstallazione, DataRimozione) " +
-                                    "VALUES (?, ?, ?, ?, ?, NULL)"
+                            "INSERT INTO storico_lanciatore (MatricolaVelivolo, PartNumber, SerialNumber, " +
+                                    "DataInstallazione, DataRimozione, PosizioneVelivolo) " +
+                                    "VALUES (?, ?, ?, ?, NULL, ?)"
                     );
 
                     stmt.setString(1, mission.getMatricolaVelivolo());
-                    stmt.setString(2, dbPosition);
-                    stmt.setString(3, config.getLauncherId());
-                    stmt.setString(4, config.getLauncherSerialNumber());
-                    stmt.setDate(5, mission.getDataMissione());
+                    stmt.setString(2, config.getLauncherId());
+                    stmt.setString(3, config.getLauncherSerialNumber());
+                    stmt.setDate(4, mission.getDataMissione());
+                    stmt.setString(5, dbPosition);
 
                     stmt.executeUpdate();
                     stmt.close();
-                    System.out.println("Added to storico_lanciatore");
                 }
 
-                // 3. Check if already in storico_carico
+                // Check if already in storico_carico
                 if (config.getWeaponId() != null) {
                     String checkCaricoSql = "SELECT ID FROM storico_carico WHERE " +
-                            "PosizioneVelivolo = ? AND PartNumber = ?";
+                            "PartNumber = ? AND PosizioneVelivolo = ?";
                     stmt = conn.prepareStatement(checkCaricoSql);
-                    stmt.setString(1, dbPosition);
-                    stmt.setString(2, config.getWeaponId());
+                    stmt.setString(1, config.getWeaponId());
+                    stmt.setString(2, dbPosition);
                     rs = stmt.executeQuery();
                     boolean caricoExists = rs.next();
                     rs.close();
                     stmt.close();
 
                     if (!caricoExists) {
-                        // Insert into storico_carico
+                        /**
+                         * Fixes for the onSaveAllClick method to match the correct database schema
+                         * Replace the storico_carico insert code block in your onSaveAllClick method with this
+                         */
+
+                        // For onSaveAllClick: Replace the storico_carico insert with this code block
+                        // Insert into storico_carico with the correct column structure
                         stmt = conn.prepareStatement(
-                                "INSERT INTO storico_carico (MatricolaVelivolo, PosizioneVelivolo, " +
-                                        "PartNumber, Nomenclatura, DataImbarco, DataSbarco) " +
-                                        "VALUES (?, ?, ?, ?, ?, NULL)"
+                                "INSERT INTO storico_carico (PartNumber, Nomenclatura, " +
+                                        "DataImbarco, DataSbarco, PosizioneVelivolo) " +
+                                        "VALUES (?, ?, ?, NULL, ?)"
                         );
 
-                        stmt.setString(1, mission.getMatricolaVelivolo());
-                        stmt.setString(2, dbPosition);
-                        stmt.setString(3, config.getWeaponId());
-                        stmt.setString(4, weapon != null ? weapon.getNomenclatura() : "Unknown");
-                        stmt.setDate(5, mission.getDataMissione());
+                        stmt.setString(1, config.getWeaponId());
+
+                        // Get weapon nomenclatura from DB
+                        Weapon weaponForPosition = weaponDAO.getByPartNumber(config.getWeaponId());
+                        stmt.setString(2, weaponForPosition != null ? weaponForPosition.getNomenclatura() : null);
+
+                        stmt.setDate(3, mission.getDataMissione());
+                        stmt.setString(4, dbPosition);
 
                         stmt.executeUpdate();
                         stmt.close();
-                        System.out.println("Added to storico_carico");
+                        System.out.println("Added to storico_carico"); // Debug output
                     }
                 }
             }
@@ -786,7 +805,9 @@ public class MissionManagementController {
             } catch (SQLException ex) {
                 ex.printStackTrace();
             }
-            AlertUtils.showError(owner, "Database Error", "Error saving position: " + e.getMessage());
+            // Display the full error message for debugging
+            AlertUtils.showError(owner, "Database Error",
+                    "Error saving position: " + e.getMessage() + "\nSQL State: " + e.getSQLState());
             e.printStackTrace();
         } finally {
             try {
@@ -973,17 +994,20 @@ public class MissionManagementController {
                     stmt.close();
                     System.out.println("Added to storico_lanciatore"); // Debug output
 
-                    // Insert into storico_carico
+                    // Insert into storico_carico - updated to match actual table columns
                     stmt = conn.prepareStatement(
                             "INSERT INTO storico_carico (MatricolaVelivolo, PosizioneVelivolo, " +
-                                    "PartNumber, Nomenclatura, DataImbarco, DataSbarco) " +
+                                    "PartNumber, SerialNumber, DataInstallazione, DataRimozione) " +
                                     "VALUES (?, ?, ?, ?, ?, NULL)"
                     );
 
+                    // Updated parameters to match correct column order and types
                     stmt.setString(1, mission.getMatricolaVelivolo());
                     stmt.setString(2, dbPosition);
                     stmt.setString(3, config.getWeaponId());
-                    stmt.setString(4, weapon != null ? weapon.getNomenclatura() : "Unknown");
+                    // Generate a serial number for the weapon if needed
+                    stmt.setString(4, "SN-" + config.getWeaponId().substring(0, Math.min(4, config.getWeaponId().length())) + "-" +
+                                   String.format("%03d", new Random().nextInt(999)));
                     stmt.setDate(5, mission.getDataMissione());
 
                     stmt.executeUpdate();
