@@ -539,6 +539,12 @@ public class MissionDAO {
     public List<WeaponStatus> getWeaponsForMission(int id) {
         return List.of();
     }
+    /**
+     * Inserts a new mission into the database and returns the generated ID.
+     *
+     * @param mission The Mission object to insert
+     * @return The generated mission ID, or -1 if insertion fails
+     */
     public int insertAndGetId(Mission mission) {
         Connection conn = null;
         PreparedStatement stmt = null;
@@ -547,25 +553,30 @@ public class MissionDAO {
 
         try {
             conn = DBUtil.getConnection();
-            String query = "INSERT INTO missione (MatricolaVelivolo, NumeroVolo, DataMissione, OraPartenza, OraArrivo) " +
+
+            // SQL query to insert a new mission
+            String sql = "INSERT INTO missione (MatricolaVelivolo, DataMissione, NumeroVolo, OraPartenza, OraArrivo) " +
                     "VALUES (?, ?, ?, ?, ?)";
 
-            stmt = conn.prepareStatement(query, Statement.RETURN_GENERATED_KEYS);
+            stmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             stmt.setString(1, mission.getMatricolaVelivolo());
-            stmt.setInt(2, mission.getNumeroVolo());
-            stmt.setDate(3, mission.getDataMissione());
+            stmt.setDate(2, mission.getDataMissione());
+            stmt.setInt(3, mission.getNumeroVolo());
             stmt.setTime(4, mission.getOraPartenza());
             stmt.setTime(5, mission.getOraArrivo());
 
-            int affectedRows = stmt.executeUpdate();
+            int rowsAffected = stmt.executeUpdate();
 
-            if (affectedRows > 0) {
+            if (rowsAffected > 0) {
+                // Get the generated ID
                 generatedKeys = stmt.getGeneratedKeys();
                 if (generatedKeys.next()) {
                     generatedId = generatedKeys.getInt(1);
+                    System.out.println("Generated mission ID: " + generatedId); // Debug output
                 }
             }
         } catch (SQLException e) {
+            System.err.println("Error inserting mission with ID: " + e.getMessage());
             e.printStackTrace();
         } finally {
             DBUtil.closeResources(conn, stmt, generatedKeys);
