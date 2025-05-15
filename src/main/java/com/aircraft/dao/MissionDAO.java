@@ -478,12 +478,12 @@ public Object[] getFlightDataForMission(int id) {
     Connection conn = null;
     PreparedStatement stmt = null;
     ResultSet rs = null;
-    Object[] flightData = new Object[5]; // ID, MaxGLoad, MinGLoad, AvgAltitude, MaxSpeed
+    Object[] flightData = new Object[6]; // ID, MaxGLoad, MinGLoad, AvgAltitude, MaxSpeed, MissileStatus
 
     try {
         conn = DBUtil.getConnection();
 
-        // Get mission info to find matricola and numero volo
+        // Get mission details first
         String sqlMission = "SELECT ID, MatricolaVelivolo, NumeroVolo FROM missione WHERE ID = ?";
         stmt = conn.prepareStatement(sqlMission);
         stmt.setInt(1, id);
@@ -499,14 +499,16 @@ public Object[] getFlightDataForMission(int id) {
             flightData[2] = 0.0; // MinGLoad
             flightData[3] = 0.0; // AvgAltitude
             flightData[4] = 0.0; // MaxSpeed
+            flightData[5] = ""; // MissileStatus
 
             rs.close();
             stmt.close();
 
-            // Get flight data from dati_registrati
-            String sqlFlightData = "SELECT GloadMax, GloadMin, QuotaMedia, VelocitaMassima " +
-                                  "FROM dati_registrati " +
-                                  "WHERE MatricolaVelivolo = ? AND NumeroVolo = ?";
+            // Get flight data from dati_registrati - ensure we get the most recent record
+            String sqlFlightData = "SELECT GloadMax, GloadMin, QuotaMedia, VelocitaMassima, StatoMissili " +
+                               "FROM dati_registrati " +
+                               "WHERE MatricolaVelivolo = ? AND NumeroVolo = ? " +
+                               "ORDER BY ID DESC LIMIT 1";
 
             stmt = conn.prepareStatement(sqlFlightData);
             stmt.setString(1, matricola);
@@ -518,10 +520,19 @@ public Object[] getFlightDataForMission(int id) {
                 flightData[2] = rs.getDouble("GloadMin");
                 flightData[3] = rs.getDouble("QuotaMedia");
                 flightData[4] = rs.getDouble("VelocitaMassima");
+                flightData[5] = rs.getString("StatoMissili");
+                System.out.println("Flight data from dati_registrati: MaxG=" + flightData[1] +
+                                  ", MinG=" + flightData[2] +
+                                  ", Altitude=" + flightData[3] +
+                                  ", Speed=" + flightData[4] +
+                                  ", MissileStatus=" + flightData[5]);
+            } else {
+                System.out.println("No flight data found in dati_registrati for: " +
+                                  matricola + ", Flight: " + numeroVolo);
             }
         }
     } catch (SQLException e) {
-        System.err.println("Error retrieving flight data for mission: " + e.getMessage());
+        System.err.println("Error retrieving flight data: " + e.getMessage());
         e.printStackTrace();
     } finally {
         DBUtil.closeResources(conn, stmt, rs);
@@ -535,10 +546,11 @@ public Object[] getFlightDataForMission(int id) {
         PreparedStatement stmt = null;
         ResultSet rs = null;
         List<WeaponStatus> weapons = new ArrayList<>();
+        String missileStatus = null;
 
         try {
             conn = DBUtil.getConnection();
-            System.out.println("Searching for weapons for mission ID: " + id);
+            System.out.println("Fetching weapons for mission ID: " + id);
 
             // Get mission details first
             String sqlMission = "SELECT MatricolaVelivolo, NumeroVolo FROM missione WHERE ID = ?";
@@ -553,49 +565,79 @@ public Object[] getFlightDataForMission(int id) {
                 rs.close();
                 stmt.close();
 
-                // Check if there's data in dati_registrati first (post-firing data)
-                String sqlCheck = "SELECT StatoMissili FROM dati_registrati WHERE MatricolaVelivolo = ? AND NumeroVolo = ? ORDER BY ID DESC LIMIT 1";
-                stmt = conn.prepareStatement(sqlCheck);
+                // First get the missile status from dati_registrati
+                String sqlStatus = "SELECT StatoMissili FROM dati_registrati " +
+                                 "WHERE MatricolaVelivolo = ? AND NumeroVolo = ? " +
+                                 "ORDER BY ID DESC LIMIT 1";
+
+                stmt = conn.prepareStatement(sqlStatus);
                 stmt.setString(1, matricola);
                 stmt.setInt(2, numeroVolo);
                 rs = stmt.executeQuery();
 
                 if (rs.next() && rs.getString("StatoMissili") != null) {
-                    // Get the updated status from dati_registrati
-                    System.out.println("Using missile status from dati_registrati");
+                    missileStatus = rs.getString("StatoMissili");
+                    System.out.println("Found missile status in dati_registrati: " + missileStatus);
                 }
 
                 rs.close();
                 stmt.close();
 
-                // Query weapons from stato_missili_missione table (still use ID_Missione)
-                String sql = "SELECT PosizioneVelivolo, PartNumber, Nomenclatura, " +
-                           "Stato, Lanciatore_PartNumber, Lanciatore_SerialNumber " +
-                           "FROM stato_missili_missione " +
-                           "WHERE ID_Missione = ? " +
-                           "ORDER BY ID DESC";
+                // Get base weapon configuration
+                String sqlWeapons = "SELECT PosizioneVelivolo, PartNumber, Nomenclatura, " +
+                                  "Stato, Lanciatore_PartNumber, Lanciatore_SerialNumber " +
+                                  "FROM stato_missili_missione " +
+                                  "WHERE ID_Missione = ? " +
+                                  "ORDER BY PosizioneVelivolo";
 
-                stmt = conn.prepareStatement(sql);
+                stmt = conn.prepareStatement(sqlWeapons);
                 stmt.setInt(1, id);
                 rs = stmt.executeQuery();
 
-                int count = 0;
+                // Map to hold weapons by position
+                java.util.Map<String, WeaponStatus> weaponMap = new java.util.HashMap<>();
+
                 while (rs.next()) {
-                    count++;
                     WeaponStatus weapon = new WeaponStatus();
-                    weapon.setPosition(rs.getString("PosizioneVelivolo"));
+                    String position = rs.getString("PosizioneVelivolo");
+                    weapon.setPosition(position);
                     weapon.setMissilePartNumber(rs.getString("PartNumber"));
                     weapon.setMissileName(rs.getString("Nomenclatura"));
-                    weapon.setStatus(rs.getString("Stato"));
+                    weapon.setStatus(rs.getString("Stato")); // Default status
                     weapon.setLauncherPartNumber(rs.getString("Lanciatore_PartNumber"));
                     weapon.setLauncherSerialNumber(rs.getString("Lanciatore_SerialNumber"));
 
+                    weaponMap.put(position, weapon);
                     weapons.add(weapon);
                 }
-                System.out.println("Found " + count + " weapons for mission ID: " + id);
+
+                // Now update statuses from dati_registrati if available
+                if (missileStatus != null && !missileStatus.isEmpty()) {
+                    // Parse status like "P1:SPARATO" and update weapons
+                    String[] statusEntries = missileStatus.split(";");
+                    for (String entry : statusEntries) {
+                        if (entry.contains(":")) {
+                            String[] parts = entry.trim().split(":");
+                            String position = parts[0];
+                            String status = parts[1];
+
+                            // Find weapon with this position and update status
+                            for (WeaponStatus weapon : weapons) {
+                                if (weapon.getPosition().equals(position)) {
+                                    System.out.println("Updating weapon at position " + position +
+                                                     " from " + weapon.getStatus() + " to " + status);
+                                    weapon.setStatus(status);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                System.out.println("Found " + weapons.size() + " weapons for mission ID: " + id);
             }
         } catch (SQLException e) {
-            System.err.println("Error retrieving weapons for mission: " + e.getMessage());
+            System.err.println("Error retrieving weapons: " + e.getMessage());
             e.printStackTrace();
         } finally {
             DBUtil.closeResources(conn, stmt, rs);
