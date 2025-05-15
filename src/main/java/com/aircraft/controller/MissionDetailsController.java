@@ -187,16 +187,15 @@ public class MissionDetailsController {
      * Loads flight data information into form fields.
      */
     private void loadFlightData() {
-        // Load flight data from dati_registrati table
         try {
-            // Assuming we have a method in MissionDAO to get flight data
             Object[] flightData = missionDAO.getFlightDataForMission(mission.getId());
 
             if (flightData != null) {
-                maxGLoadField.setText(String.valueOf(flightData[0]));
-                minGLoadField.setText(String.valueOf(flightData[1]));
-                avgAltitudeField.setText(String.valueOf(flightData[2]));
-                maxSpeedField.setText(String.valueOf(flightData[3]));
+                // Correct indices for each field
+                maxGLoadField.setText(String.valueOf(flightData[1]));  // MaxGLoad at index 1
+                minGLoadField.setText(String.valueOf(flightData[2]));  // MinGLoad at index 2
+                avgAltitudeField.setText(String.valueOf(flightData[3])); // AvgAltitude at index 3
+                maxSpeedField.setText(String.valueOf(flightData[4]));   // MaxSpeed at index 4
             }
         } catch (Exception e) {
             System.err.println("Error loading flight data: " + e.getMessage());

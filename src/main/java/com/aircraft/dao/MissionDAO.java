@@ -474,6 +474,12 @@ public class MissionDAO {
         return getById(id);
     }
 
+/**
+ * Retrieves flight data for a specific mission.
+ *
+ * @param id The mission ID
+ * @return Array containing [MissionID, MaxGLoad, MinGLoad, AvgAltitude, MaxSpeed, MissileStatus]
+ */
 public Object[] getFlightDataForMission(int id) {
     Connection conn = null;
     PreparedStatement stmt = null;
@@ -482,6 +488,7 @@ public Object[] getFlightDataForMission(int id) {
 
     try {
         conn = DBUtil.getConnection();
+        System.out.println("Fetching flight data for mission ID: " + id);
 
         // Get mission details first
         String sqlMission = "SELECT ID, MatricolaVelivolo, NumeroVolo FROM missione WHERE ID = ?";
@@ -521,11 +528,12 @@ public Object[] getFlightDataForMission(int id) {
                 flightData[3] = rs.getDouble("QuotaMedia");
                 flightData[4] = rs.getDouble("VelocitaMassima");
                 flightData[5] = rs.getString("StatoMissili");
-                System.out.println("Flight data from dati_registrati: MaxG=" + flightData[1] +
-                                  ", MinG=" + flightData[2] +
-                                  ", Altitude=" + flightData[3] +
-                                  ", Speed=" + flightData[4] +
-                                  ", MissileStatus=" + flightData[5]);
+
+                System.out.println("Flight data retrieved - Mission ID: " + flightData[0] +
+                                  ", MaxG: " + flightData[1] +
+                                  ", MinG: " + flightData[2] +
+                                  ", Altitude: " + flightData[3] +
+                                  ", Speed: " + flightData[4]);
             } else {
                 System.out.println("No flight data found in dati_registrati for: " +
                                   matricola + ", Flight: " + numeroVolo);
