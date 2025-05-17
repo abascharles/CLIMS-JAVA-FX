@@ -686,6 +686,7 @@ public Object[] getFlightDataForMission(int id) {
                 generatedKeys = stmt.getGeneratedKeys();
                 if (generatedKeys.next()) {
                     generatedId = generatedKeys.getInt(1);
+                    mission.setId(generatedId); // Update the mission object with the ID
                     System.out.println("Generated mission ID: " + generatedId); // Debug output
                 }
             }

@@ -166,8 +166,8 @@ public class AircraftDAO {
         try {
             conn = DBUtil.getConnection();
 
-            // SQL query to retrieve all aircraft
-            String sql = "SELECT * FROM matricola_velivolo";
+            // SQL query to retrieve all aircraft from the view
+            String sql = "SELECT * FROM view_aircraft_list";
             stmt = conn.prepareStatement(sql);
 
             rs = stmt.executeQuery();

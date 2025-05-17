@@ -69,9 +69,8 @@ public class LauncherDAO {
 
         try {
             conn = DBUtil.getConnection();
-            String query = "SELECT PartNumber, Nomenclatura, CodiceDitta, OreVitaOperativa " +
-                    "FROM anagrafica_lanciatore " +
-                    "ORDER BY PartNumber";
+            // Use the view_launcher_list view
+            String query = "SELECT * FROM view_launcher_list";
 
             stmt = conn.prepareStatement(query);
             rs = stmt.executeQuery();

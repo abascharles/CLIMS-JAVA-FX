@@ -86,7 +86,7 @@
                                                             <children>
                                                                 <Button fx:id="saveButton" onAction="#onSaveButtonClick" styleClass="action-button" text="SAVE" />
                                                                 <Button onAction="#onClearButtonClick" styleClass="action-button" text="CLEAR" />
-                                                                <Button onAction="#onBackButtonClick" styleClass="action-button" text="BACK" />
+                                                                <Button onAction="#onBackButtonClick" styleClass="action-button" text="HOME" />
                                                             </children>
                                                         </HBox>
                                                     </children>
@@ -109,9 +109,7 @@
                                                 </TableView>
                                                 <HBox alignment="CENTER" spacing="15.0">
                                                     <children>
-                                                        <Button onAction="#onEditButtonClick" styleClass="action-button" text="EDIT" />
-                                                        <Button onAction="#onDeleteButtonClick" styleClass="action-button" text="DELETE" />
-                                                        <Button onAction="#onBackButtonClick" styleClass="action-button" text="BACK" />
+                                                        <Button onAction="#onBackButtonClick" styleClass="action-button" text="HOME" />
                                                     </children>
                                                 </HBox>
                                             </children>

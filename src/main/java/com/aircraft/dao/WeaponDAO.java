@@ -210,14 +210,13 @@ public class WeaponDAO {
         try {
             conn = DBUtil.getConnection();
 
-            // SQL query to retrieve all weapons
-            String sql = "SELECT * FROM anagrafica_carichi";
+            // Use the view_weapon_list view instead of direct table access
+            String sql = "SELECT * FROM view_weapon_list";
             stmt = conn.prepareStatement(sql);
 
             rs = stmt.executeQuery();
 
             while (rs.next()) {
-                // For each row, create a Weapon object and add to list
                 Weapon weapon = createWeaponFromResultSet(rs);
                 weapons.add(weapon);
             }
