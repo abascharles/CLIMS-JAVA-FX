@@ -66,8 +66,8 @@
                         <TextField fx:id="gloadMinField" GridPane.columnIndex="3" />
                         <Label text="Average Altitude:" GridPane.rowIndex="1" />
                         <TextField fx:id="quotaMediaField" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                        <Label text="Max Speed:" GridPane.columnIndex="2" GridPane.rowIndex="1" />
-                        <TextField fx:id="velocitaMassimaField" GridPane.columnIndex="3" GridPane.rowIndex="1" />
+<!--                        <Label text="Max Speed:" GridPane.columnIndex="2" GridPane.rowIndex="1" />-->
+<!--                        <TextField fx:id="velocitaMassimaField" GridPane.columnIndex="3" GridPane.rowIndex="1" />-->
                     </children>
                 </GridPane>
                 <Separator />
