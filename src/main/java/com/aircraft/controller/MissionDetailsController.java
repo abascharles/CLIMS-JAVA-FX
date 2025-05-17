@@ -4,6 +4,7 @@ import com.aircraft.dao.MissionDAO;
 import com.aircraft.model.Mission;
 import com.aircraft.model.WeaponStatus;
 import com.aircraft.util.AlertUtils;
+import com.aircraft.util.DBUtil;
 import com.aircraft.util.PDFGenerator;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -16,6 +17,9 @@ import javafx.stage.Stage;
 import javafx.stage.Window;
 
 import java.io.File;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Time;
 import java.time.LocalTime;
 import java.util.List;
@@ -57,7 +61,7 @@ public class MissionDetailsController {
     private TextField avgAltitudeField;
 
     @FXML
-    private TextField maxSpeedField;
+    private TextField firedPositionsField;
 
     @FXML
     private TableView<WeaponStatus> weaponsTable;
@@ -119,13 +123,13 @@ public class MissionDetailsController {
 
         if (mission != null) {
             // Load mission data
-            loadMissionData();
+            loadMissionData(missionId);
 
-            // Load flight data
-            loadFlightData();
+            // Load flight data from vista_gui_missione
+            loadFlightDataFromView(missionId);
 
             // Load weapons data
-            loadWeaponsData();
+            loadWeaponsData(missionId);
         } else {
             // Handle error - mission not found
             AlertUtils.showError(null, "Error", "Mission not found: ID " + missionId);
@@ -144,14 +148,14 @@ public class MissionDetailsController {
         maxGLoadField.setText("");
         minGLoadField.setText("");
         avgAltitudeField.setText("");
-        maxSpeedField.setText("");
+        firedPositionsField.setText("");
         weaponsList.clear();
     }
 
     /**
      * Loads basic mission information into form fields.
      */
-    private void loadMissionData() {
+    private void loadMissionData(int missionId) {
         missionIdLabel.setText("Mission ID: #" + mission.getId());
         aircraftField.setText(mission.getMatricolaVelivolo());
         flightNumberField.setText(String.valueOf(mission.getNumeroVolo()));
@@ -184,33 +188,66 @@ public class MissionDetailsController {
     }
 
     /**
-     * Loads flight data information into form fields.
+     * Loads flight data from vista_gui_missione view
      */
-    private void loadFlightData() {
-        try {
-            Object[] flightData = missionDAO.getFlightDataForMission(mission.getId());
+    private void loadFlightDataFromView(int missionId) {
+        Connection connection = null;
+        PreparedStatement statement = null;
+        ResultSet resultSet = null;
 
-            if (flightData != null) {
-                // Correct indices for each field
-                maxGLoadField.setText(String.valueOf(flightData[1]));  // MaxGLoad at index 1
-                minGLoadField.setText(String.valueOf(flightData[2]));  // MinGLoad at index 2
-                avgAltitudeField.setText(String.valueOf(flightData[3])); // AvgAltitude at index 3
-                maxSpeedField.setText(String.valueOf(flightData[4]));   // MaxSpeed at index 4
+        try {
+            connection = DBUtil.getConnection();
+
+            // Query from vista_gui_missione view
+            String query = "SELECT GloadMin, GloadMax, QuotaMedia, PosizioniSparo FROM vista_gui_missione " +
+                    "WHERE ID_Missione = ?";
+
+            statement = connection.prepareStatement(query);
+            statement.setInt(1, missionId);
+            resultSet = statement.executeQuery();
+
+            if (resultSet.next()) {
+                // Populate flight data fields
+                double gloadMin = resultSet.getDouble("GloadMin");
+                double gloadMax = resultSet.getDouble("GloadMax");
+                int quotaMedia = resultSet.getInt("QuotaMedia");
+                String posizioniSparo = resultSet.getString("PosizioniSparo");
+
+                minGLoadField.setText(String.valueOf(gloadMin));
+                maxGLoadField.setText(String.valueOf(gloadMax));
+                avgAltitudeField.setText(String.valueOf(quotaMedia));
+
+                // If there are fired positions, display them
+                if (posizioniSparo != null && !posizioniSparo.isEmpty()) {
+                    firedPositionsField.setText(posizioniSparo);
+                } else {
+                    firedPositionsField.setText("None");
+                }
+            } else {
+                // Clear fields if no data found
+                minGLoadField.clear();
+                maxGLoadField.clear();
+                avgAltitudeField.clear();
+                firedPositionsField.setText("None");
             }
+
         } catch (Exception e) {
             System.err.println("Error loading flight data: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(connection, statement, resultSet);
         }
     }
 
     /**
      * Loads weapons (launchers and missiles) data into the table.
      */
-    private void loadWeaponsData() {
+    private void loadWeaponsData(int missionId) {
         // Clear existing data
         weaponsList.clear();
 
         // Load weapons data from database
-        List<WeaponStatus> weapons = missionDAO.getWeaponsForMission(mission.getId());
+        List<WeaponStatus> weapons = missionDAO.getWeaponsForMission(missionId);
 
         if (weapons != null && !weapons.isEmpty()) {
             weaponsList.addAll(weapons);
@@ -278,11 +315,11 @@ public class MissionDetailsController {
     /**
      * Closes the mission details window.
      */
-   private void closeWindow() {
-       // Add null checks to prevent the NullPointerException
-       if (closeButton != null && closeButton.getScene() != null && closeButton.getScene().getWindow() != null) {
-           Stage stage = (Stage) closeButton.getScene().getWindow();
-           stage.close();
-       }
-   }
+    private void closeWindow() {
+        // Add null checks to prevent the NullPointerException
+        if (closeButton != null && closeButton.getScene() != null && closeButton.getScene().getWindow() != null) {
+            Stage stage = (Stage) closeButton.getScene().getWindow();
+            stage.close();
+        }
+    }
 }

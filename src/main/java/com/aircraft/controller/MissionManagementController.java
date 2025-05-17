@@ -363,6 +363,19 @@ public class MissionManagementController {
         weaponSelectionPanel.visibleProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal) {
                 loadLauncherAndWeaponLists();
+            } else {
+                // When the panel is hidden, update the position to its true state
+                updatePositionStatus();
+            }
+        });
+
+        // Add a listener for clicking on the background
+        missilePointsContainer.setOnMouseClicked(event -> {
+            if (event.getTarget() == missilePointsContainer) {
+                // Only if clicked directly on the container, not on a position
+                updatePositionStatus();
+                currentSelectedPosition = null;
+                weaponSelectionPanel.setVisible(false);
             }
         });
     }
@@ -482,15 +495,16 @@ public class MissionManagementController {
      * @param position The position identifier (e.g., "P1")
      */
     private void selectPosition(String position) {
-        // Clear previous selection
+        // Update previous position based on its actual configuration
         if (currentSelectedPosition != null && missilePointsMap.containsKey(currentSelectedPosition)) {
+            // First update based on configuration
+            updateMissilePointUI(currentSelectedPosition);
+
+            // Then reset styling
             Pane previousPoint = missilePointsMap.get(currentSelectedPosition);
             Rectangle rect = (Rectangle) ((StackPane) previousPoint).getChildren().get(0);
             rect.setStroke(Color.GRAY); // Reset border color
             rect.setStrokeWidth(1.5);
-
-            // Restore original style based on configuration
-            updateMissilePointUI(currentSelectedPosition);
         }
 
         // Set new selection
@@ -515,7 +529,7 @@ public class MissionManagementController {
                     .filter(l -> l.getPartNumber().equals(config.getLauncherId()))
                     .findFirst();
 
-            launcher.ifPresent(l -> launcherComboBox.setValue(l.getNomenclatura()));
+            launcher.ifPresent(l -> launcherComboBox.setValue(l.getNomenclatura() + " (" + l.getPartNumber() + ")"));
         } else {
             launcherComboBox.setValue("");
         }
@@ -526,7 +540,7 @@ public class MissionManagementController {
                     .filter(w -> w.getPartNumber().equals(config.getWeaponId()))
                     .findFirst();
 
-            weapon.ifPresent(w -> weaponComboBox.setValue(w.getNomenclatura()));
+            weapon.ifPresent(w -> weaponComboBox.setValue(w.getNomenclatura() + " (" + w.getPartNumber() + ")"));
         } else {
             weaponComboBox.setValue("");
         }
@@ -909,6 +923,16 @@ public class MissionManagementController {
                 rect.setFill(Color.LIGHTGREEN);
                 rect.setOpacity(0.7);
             }
+        }
+    }
+    /**
+     * Add this new method to the MissionManagementController class
+     * to handle when a user navigates away from a position without saving.
+     */
+    private void updatePositionStatus() {
+        // If there was a previously selected position, update its UI based on actual configuration
+        if (currentSelectedPosition != null && missilePointsMap.containsKey(currentSelectedPosition)) {
+            updateMissilePointUI(currentSelectedPosition);
         }
     }
 

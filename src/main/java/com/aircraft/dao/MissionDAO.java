@@ -549,111 +549,68 @@ public Object[] getFlightDataForMission(int id) {
     return flightData;
 }
 
-   public List<WeaponStatus> getWeaponsForMission(int id) {
-        Connection conn = null;
-        PreparedStatement stmt = null;
-        ResultSet rs = null;
-        List<WeaponStatus> weapons = new ArrayList<>();
-        String missileStatus = null;
+public List<WeaponStatus> getWeaponsForMission(int id) {
+    Connection conn = null;
+    PreparedStatement stmt = null;
+    ResultSet rs = null;
+    List<WeaponStatus> weapons = new ArrayList<>();
 
-        try {
-            conn = DBUtil.getConnection();
-            System.out.println("Fetching weapons for mission ID: " + id);
+    try {
+        conn = DBUtil.getConnection();
+        System.out.println("Fetching weapons for mission ID: " + id);
 
-            // Get mission details first
-            String sqlMission = "SELECT MatricolaVelivolo, NumeroVolo FROM missione WHERE ID = ?";
-            stmt = conn.prepareStatement(sqlMission);
-            stmt.setInt(1, id);
-            rs = stmt.executeQuery();
+        // First get mission details
+        String sqlMission = "SELECT MatricolaVelivolo FROM missione WHERE ID = ?";
+        stmt = conn.prepareStatement(sqlMission);
+        stmt.setInt(1, id);
+        rs = stmt.executeQuery();
 
-            if (rs.next()) {
-                String matricola = rs.getString("MatricolaVelivolo");
-                int numeroVolo = rs.getInt("NumeroVolo");
-
-                rs.close();
-                stmt.close();
-
-                // First get the missile status from dati_registrati
-                String sqlStatus = "SELECT StatoMissili FROM dati_registrati " +
-                                 "WHERE MatricolaVelivolo = ? AND NumeroVolo = ? " +
-                                 "ORDER BY ID DESC LIMIT 1";
-
-                stmt = conn.prepareStatement(sqlStatus);
-                stmt.setString(1, matricola);
-                stmt.setInt(2, numeroVolo);
-                rs = stmt.executeQuery();
-
-                if (rs.next() && rs.getString("StatoMissili") != null) {
-                    missileStatus = rs.getString("StatoMissili");
-                    System.out.println("Found missile status in dati_registrati: " + missileStatus);
-                }
-
-                rs.close();
-                stmt.close();
-
-                // Get base weapon configuration
-                String sqlWeapons = "SELECT PosizioneVelivolo, PartNumber, Nomenclatura, " +
-                                  "Stato, Lanciatore_PartNumber, Lanciatore_SerialNumber " +
-                                  "FROM stato_missili_missione " +
-                                  "WHERE ID_Missione = ? " +
-                                  "ORDER BY PosizioneVelivolo";
-
-                stmt = conn.prepareStatement(sqlWeapons);
-                stmt.setInt(1, id);
-                rs = stmt.executeQuery();
-
-                // Map to hold weapons by position
-                java.util.Map<String, WeaponStatus> weaponMap = new java.util.HashMap<>();
-
-                while (rs.next()) {
-                    WeaponStatus weapon = new WeaponStatus();
-                    String position = rs.getString("PosizioneVelivolo");
-                    weapon.setPosition(position);
-                    weapon.setMissilePartNumber(rs.getString("PartNumber"));
-                    weapon.setMissileName(rs.getString("Nomenclatura"));
-                    weapon.setStatus(rs.getString("Stato")); // Default status
-                    weapon.setLauncherPartNumber(rs.getString("Lanciatore_PartNumber"));
-                    weapon.setLauncherSerialNumber(rs.getString("Lanciatore_SerialNumber"));
-
-                    weaponMap.put(position, weapon);
-                    weapons.add(weapon);
-                }
-
-                // Now update statuses from dati_registrati if available
-                if (missileStatus != null && !missileStatus.isEmpty()) {
-                    // Parse status like "P1:SPARATO" and update weapons
-                    String[] statusEntries = missileStatus.split(";");
-                    for (String entry : statusEntries) {
-                        if (entry.contains(":")) {
-                            String[] parts = entry.trim().split(":");
-                            String position = parts[0];
-                            String status = parts[1];
-
-                            // Find weapon with this position and update status
-                            for (WeaponStatus weapon : weapons) {
-                                if (weapon.getPosition().equals(position)) {
-                                    System.out.println("Updating weapon at position " + position +
-                                                     " from " + weapon.getStatus() + " to " + status);
-                                    weapon.setStatus(status);
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                System.out.println("Found " + weapons.size() + " weapons for mission ID: " + id);
-            }
-        } catch (SQLException e) {
-            System.err.println("Error retrieving weapons: " + e.getMessage());
-            e.printStackTrace();
-        } finally {
-            DBUtil.closeResources(conn, stmt, rs);
+        String matricola = null;
+        if (rs.next()) {
+            matricola = rs.getString("MatricolaVelivolo");
+            rs.close();
+            stmt.close();
+        } else {
+            return weapons; // Return empty list if mission not found
         }
 
-        return weapons;
+        // Query launcher and missile data from historical tables
+        String sqlWeapons =
+            "SELECT sl.PosizioneVelivolo, sl.PartNumber AS LauncherPN, sl.SerialeAssieme AS LauncherSN, " +
+            "sc.PartNumber AS MissilePN, sc.Descrizione AS MissileName, " +
+            "CASE WHEN sc.Stato = 'FIRED' THEN 'FIRED' ELSE 'ONBOARD' END AS Status " +
+            "FROM storico_lanciatore sl " +
+            "LEFT JOIN storico_carico sc ON sl.PosizioneVelivolo = sc.PosizioneVelivolo " +
+            "AND sl.MatricolaVelivolo = sc.MatricolaVelivolo " +
+            "WHERE sl.IdMissione = ? " +
+            "ORDER BY sl.PosizioneVelivolo";
+
+        stmt = conn.prepareStatement(sqlWeapons);
+        stmt.setInt(1, id);
+        rs = stmt.executeQuery();
+
+        while (rs.next()) {
+            WeaponStatus weapon = new WeaponStatus();
+            String position = rs.getString("PosizioneVelivolo");
+            weapon.setPosition(position);
+            weapon.setMissilePartNumber(rs.getString("MissilePN"));
+            weapon.setMissileName(rs.getString("MissileName"));
+            weapon.setStatus(rs.getString("Status"));
+            weapon.setLauncherPartNumber(rs.getString("LauncherPN"));
+            weapon.setLauncherSerialNumber(rs.getString("LauncherSN"));
+            weapons.add(weapon);
+        }
+
+        System.out.println("Found " + weapons.size() + " weapons for mission ID: " + id);
+    } catch (SQLException e) {
+        System.err.println("Error retrieving weapons: " + e.getMessage());
+        e.printStackTrace();
+    } finally {
+        DBUtil.closeResources(conn, stmt, rs);
     }
 
+    return weapons;
+}
     /**
      * Checks if a flight number already exists for the specified aircraft.
      *

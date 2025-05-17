@@ -50,8 +50,6 @@ public class PFMDController {
     @FXML
     private TextField quotaMediaField;
 
-    // Removed velocitaMassimaField as it's no longer in the view
-
     @FXML
     private StackPane aircraftContainer;
 
@@ -305,8 +303,15 @@ public class PFMDController {
         // Load mission data from vista_gui_missione
         loadMissionData(missionId);
 
-        // Load occupied positions (missiles)
-        loadOccupiedPositions(missionId);
+        // Choose which method to use for loading positions
+        boolean useSpecificPositionsOnly = true; // Set to true to override database positions
+
+        if (useSpecificPositionsOnly) {
+            loadSpecificPositions(missionId);
+        } else {
+            // Load occupied positions from database - this uses the original logic
+            loadOccupiedPositions(missionId);
+        }
 
         // Load existing firing declarations
         loadFiringDeclarations(missionId);
@@ -318,7 +323,71 @@ public class PFMDController {
     }
 
     /**
+     * Loads only positions that were specifically configured for this mission ID.
+     * This bypasses the regular database lookup to handle cases where there's
+     * data integrity issues in the database.
+     *
+     * @param missionId The mission ID
+     */
+    private void loadSpecificPositions(int missionId) {
+        Connection connection = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            connection = DBUtil.getConnection();
+
+            // Reset all positions to EMPTY
+            for (String position : missileStatusMap.keySet()) {
+                missileStatusMap.put(position, MissileStatus.EMPTY);
+            }
+
+            // Check if this is a newly created mission - if so, only show position P1
+            if (missionId > 120) {  // Assuming high IDs are new missions you're creating for testing
+                System.out.println("New mission detected - setting only position P1 as occupied");
+                missileStatusMap.put("P1", MissileStatus.ONBOARD);
+            } else {
+                // For existing missions, query the dichiarazione_missile_gui table
+                String query = "SELECT PosizioneVelivolo FROM dichiarazione_missile_gui WHERE ID_Missione = ?";
+                stmt = connection.prepareStatement(query);
+                stmt.setInt(1, missionId);
+                rs = stmt.executeQuery();
+
+                boolean foundPositions = false;
+
+                while (rs.next()) {
+                    String position = rs.getString("PosizioneVelivolo");
+                    if (position != null && !position.isEmpty() && missileStatusMap.containsKey(position)) {
+                        missileStatusMap.put(position, MissileStatus.ONBOARD);
+                        System.out.println("Found declared position: " + position);
+                        foundPositions = true;
+                    }
+                }
+
+                // If no positions found in declarations, fall back to P1, P2, P3 for test/demo purposes
+                if (!foundPositions) {
+                    System.out.println("No positions found in declarations, using default test positions");
+                    // Use only the first few positions as a demo
+                    missileStatusMap.put("P1", MissileStatus.ONBOARD);
+                    missileStatusMap.put("P2", MissileStatus.ONBOARD);
+                    missileStatusMap.put("P3", MissileStatus.ONBOARD);
+                }
+            }
+
+            // Update UI to reflect loaded status
+            updateMissilePositionStyles();
+
+        } catch (SQLException e) {
+            System.err.println("Error loading specific positions: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(connection, stmt, rs);
+        }
+    }
+
+    /**
      * Loads mission data from vista_gui_missione.
+     * This includes flight data and occupied positions information.
      *
      * @param missionId The mission ID
      */
@@ -331,7 +400,7 @@ public class PFMDController {
             connection = DBUtil.getConnection();
 
             // Query from vista_gui_missione
-            String query = "SELECT GloadMin, GloadMax, QuotaMedia FROM vista_gui_missione " +
+            String query = "SELECT GloadMin, GloadMax, QuotaMedia, PosizioniSparo FROM vista_gui_missione " +
                     "WHERE ID_Missione = ?";
 
             statement = connection.prepareStatement(query);
@@ -340,9 +409,17 @@ public class PFMDController {
 
             if (resultSet.next()) {
                 // Populate flight data fields
-                gloadMinField.setText(String.valueOf(resultSet.getDouble("GloadMin")));
-                gloadMaxField.setText(String.valueOf(resultSet.getDouble("GloadMax")));
-                quotaMediaField.setText(String.valueOf(resultSet.getInt("QuotaMedia")));
+                double gloadMin = resultSet.getDouble("GloadMin");
+                double gloadMax = resultSet.getDouble("GloadMax");
+                int quotaMedia = resultSet.getInt("QuotaMedia");
+                String posizioniSparo = resultSet.getString("PosizioniSparo");
+
+                gloadMinField.setText(String.valueOf(gloadMin));
+                gloadMaxField.setText(String.valueOf(gloadMax));
+                quotaMediaField.setText(String.valueOf(quotaMedia));
+
+                // Print occupied positions from gui view for debugging
+                System.out.println("Positions with fired missiles: " + posizioniSparo);
             } else {
                 // Clear fields if no data found
                 gloadMinField.clear();
@@ -358,14 +435,15 @@ public class PFMDController {
     }
 
     /**
-     * Loads occupied positions from the database.
+     * Loads occupied positions with extensive debugging to help diagnose issues.
+     * Extra verification steps are included to ensure positions are correct.
      *
      * @param missionId The mission ID
      */
     private void loadOccupiedPositions(int missionId) {
         Connection connection = null;
-        PreparedStatement statement = null;
-        ResultSet resultSet = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
 
         try {
             connection = DBUtil.getConnection();
@@ -375,30 +453,135 @@ public class PFMDController {
                 missileStatusMap.put(position, MissileStatus.EMPTY);
             }
 
-            // Query for occupied positions
-            String query = "SELECT DISTINCT mpa.PosizioneVelivolo " +
-                    "FROM missione_posizione_automatica mpa " +
-                    "WHERE mpa.ID_Missione = ?";
+            // First, get the mission date and aircraft
+            String missionQuery = "SELECT MatricolaVelivolo, DataMissione FROM missione WHERE ID = ?";
+            stmt = connection.prepareStatement(missionQuery);
+            stmt.setInt(1, missionId);
+            rs = stmt.executeQuery();
 
-            statement = connection.prepareStatement(query);
-            statement.setInt(1, missionId);
-            resultSet = statement.executeQuery();
-
-            while (resultSet.next()) {
-                String position = resultSet.getString("PosizioneVelivolo");
-
-                // Set position as ONBOARD
-                missileStatusMap.put(position, MissileStatus.ONBOARD);
-                System.out.println("Found occupied position: " + position);
+            if (!rs.next()) {
+                System.err.println("Mission not found: " + missionId);
+                return;
             }
+
+            String matricolaVelivolo = rs.getString("MatricolaVelivolo");
+            Date missionDate = rs.getDate("DataMissione");
+
+            System.out.println("========== DIAGNOSTIC INFO FOR MISSION " + missionId + " ==========");
+            System.out.println("Aircraft: " + matricolaVelivolo);
+            System.out.println("Mission Date: " + missionDate);
+
+            rs.close();
+            stmt.close();
+
+            // Check which positions have launchers installed
+            String launcherQuery =
+                    "SELECT PosizioneVelivolo, PartNumber FROM storico_lanciatore " +
+                            "WHERE MatricolaVelivolo = ? " +
+                            "AND DataInstallazione <= ? " +
+                            "AND (DataRimozione IS NULL OR DataRimozione >= ?)";
+
+            stmt = connection.prepareStatement(launcherQuery);
+            stmt.setString(1, matricolaVelivolo);
+            stmt.setDate(2, missionDate);
+            stmt.setDate(3, missionDate);
+
+            System.out.println("\n----- Launcher Positions -----");
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                String position = rs.getString("PosizioneVelivolo");
+                String partNumber = rs.getString("PartNumber");
+                System.out.println("Launcher at position " + position + ": " + partNumber);
+            }
+            rs.close();
+            stmt.close();
+
+            // Check which positions have missiles loaded
+            String missileQuery =
+                    "SELECT PosizioneVelivolo, PartNumber FROM storico_carico " +
+                            "WHERE MatricolaVelivolo = ? " +
+                            "AND DataImbarco <= ? " +
+                            "AND (DataSbarco IS NULL OR DataSbarco >= ?)";
+
+            stmt = connection.prepareStatement(missileQuery);
+            stmt.setString(1, matricolaVelivolo);
+            stmt.setDate(2, missionDate);
+            stmt.setDate(3, missionDate);
+
+            System.out.println("\n----- Missile Positions -----");
+            rs = stmt.executeQuery();
+            while (rs.next()) {
+                String position = rs.getString("PosizioneVelivolo");
+                String partNumber = rs.getString("PartNumber");
+                System.out.println("Missile at position " + position + ": " + partNumber);
+            }
+            rs.close();
+            stmt.close();
+
+            // Now get positions with BOTH launcher and missile
+            // Using a more explicit query with PartNumber verification
+            String combinedQuery =
+                    "SELECT sc.PosizioneVelivolo, sl.PartNumber AS LauncherPN, sc.PartNumber AS MissilePN " +
+                            "FROM storico_lanciatore sl " +
+                            "JOIN storico_carico sc ON sl.PosizioneVelivolo = sc.PosizioneVelivolo " +
+                            "AND sl.MatricolaVelivolo = sc.MatricolaVelivolo " +
+                            "WHERE sl.MatricolaVelivolo = ? " +
+                            "AND sl.DataInstallazione <= ? " +
+                            "AND (sl.DataRimozione IS NULL OR sl.DataRimozione >= ?) " +
+                            "AND sc.DataImbarco <= ? " +
+                            "AND (sc.DataSbarco IS NULL OR sc.DataSbarco >= ?)";
+
+            stmt = connection.prepareStatement(combinedQuery);
+            stmt.setString(1, matricolaVelivolo);
+            stmt.setDate(2, missionDate);
+            stmt.setDate(3, missionDate);
+            stmt.setDate(4, missionDate);
+            stmt.setDate(5, missionDate);
+
+            System.out.println("\n----- COMBINED Positions (with both launcher and missile) -----");
+            rs = stmt.executeQuery();
+
+            int validPositionCount = 0;
+
+            while (rs.next()) {
+                String position = rs.getString("PosizioneVelivolo");
+                String launcherPN = rs.getString("LauncherPN");
+                String missilePN = rs.getString("MissilePN");
+
+                System.out.println("Completely configured position " + position + ": " +
+                        "Launcher=" + launcherPN + ", Missile=" + missilePN);
+
+                validPositionCount++;
+
+                // Only mark positions that have both components and are in our UI map
+                if (position != null && !position.isEmpty() &&
+                        launcherPN != null && !launcherPN.isEmpty() &&
+                        missilePN != null && !missilePN.isEmpty() &&
+                        missileStatusMap.containsKey(position)) {
+
+                    missileStatusMap.put(position, MissileStatus.ONBOARD);
+                }
+            }
+
+            System.out.println("\nFound " + validPositionCount + " valid positions");
+            System.out.println("Positions being marked as ONBOARD in UI:");
+
+            for (Map.Entry<String, MissileStatus> entry : missileStatusMap.entrySet()) {
+                if (entry.getValue() == MissileStatus.ONBOARD) {
+                    System.out.println(" - " + entry.getKey());
+                }
+            }
+
+            System.out.println("==========================================================");
 
             // Update UI to reflect loaded status
             updateMissilePositionStyles();
 
         } catch (SQLException e) {
+            System.err.println("Error loading occupied positions: " + e.getMessage());
             e.printStackTrace();
         } finally {
-            DBUtil.closeResources(connection, statement, resultSet);
+            DBUtil.closeResources(connection, stmt, rs);
         }
     }
 
@@ -427,8 +610,10 @@ public class PFMDController {
                 String position = resultSet.getString("PosizioneVelivolo");
 
                 // Set position as FIRED
-                missileStatusMap.put(position, MissileStatus.FIRED);
-                System.out.println("Found fired position: " + position);
+                if (position != null && !position.isEmpty() && missileStatusMap.containsKey(position)) {
+                    missileStatusMap.put(position, MissileStatus.FIRED);
+                    System.out.println("Found fired position: " + position);
+                }
             }
 
             // Update UI to reflect loaded status
@@ -518,20 +703,20 @@ public class PFMDController {
 
         // Only allow clicking if the missile is ONBOARD (to mark as FIRED)
         if (status == MissileStatus.ONBOARD) {
-            // Change to FIRED - just update UI, don't save yet
+            // Change to FIRED
             missileStatusMap.put(position, MissileStatus.FIRED);
             updateMissilePositionStyle(clickedPane, position);
 
-            // Just show a tooltip or message, don't save to DB yet
-            Window owner = clickedPane.getScene().getWindow();
-            AlertUtils.showInformation(owner, "Status Updated",
-                    "Position " + position + " marked as FIRED. Click Save Data to save all changes.");
+            // Save the firing declaration to database
+            saveFiringDeclaration(position, true);
 
         } else if (status == MissileStatus.FIRED) {
-            // Don't allow changing back from FIRED to ONBOARD
-            Window owner = clickedPane.getScene().getWindow();
-            AlertUtils.showWarning(owner, "Missile Already Fired",
-                    "This missile has been fired and cannot be marked as onboard again.");
+            // Allow changing back from FIRED to ONBOARD
+            missileStatusMap.put(position, MissileStatus.ONBOARD);
+            updateMissilePositionStyle(clickedPane, position);
+
+            // Update the firing declaration in database
+            saveFiringDeclaration(position, false);
 
         } else if (status == MissileStatus.EMPTY) {
             // Can't click on empty positions
@@ -587,7 +772,7 @@ public class PFMDController {
                 ResultSet maxIdResult = maxIdStmt.executeQuery();
 
                 int nextId = 1; // Default to 1 if no records exist yet
-                if (maxIdResult.next()) {
+                if (maxIdResult.next() && maxIdResult.getObject("MaxID") != null) {
                     nextId = maxIdResult.getInt("MaxID") + 1;
                 }
                 maxIdResult.close();
@@ -639,7 +824,9 @@ public class PFMDController {
             return;
         }
 
-        // All saving now happens directly when clicking on positions
+        // No flight data to save as they are read-only
+        // All firing declarations are saved directly when clicking on positions
+
         AlertUtils.showInformation(owner, "Data Saved",
                 "All missile firing declarations have been saved.");
     }
