@@ -653,6 +653,41 @@ public Object[] getFlightDataForMission(int id) {
 
         return weapons;
     }
+
+    /**
+     * Checks if a flight number already exists for the specified aircraft.
+     *
+     * @param matricolaVelivolo The aircraft serial number
+     * @param numeroVolo The flight number to check
+     * @return true if the flight number already exists for the aircraft, false otherwise
+     */
+    public boolean flightNumberExists(String matricolaVelivolo, int numeroVolo) {
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+        boolean exists = false;
+
+        try {
+            conn = DBUtil.getConnection();
+
+            // SQL query to check if a flight number exists for the specified aircraft
+            String sql = "SELECT 1 FROM missione WHERE MatricolaVelivolo = ? AND NumeroVolo = ?";
+            stmt = conn.prepareStatement(sql);
+            stmt.setString(1, matricolaVelivolo);
+            stmt.setInt(2, numeroVolo);
+
+            rs = stmt.executeQuery();
+            exists = rs.next();
+        } catch (SQLException e) {
+            System.err.println("Error checking flight number existence: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(conn, stmt, rs);
+        }
+
+        return exists;
+    }
+
     /**
      * Inserts a new mission into the database and returns the generated ID.
      *

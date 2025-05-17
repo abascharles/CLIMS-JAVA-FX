@@ -589,16 +589,32 @@ public class MissionManagementController {
                 return;
             }
 
-            // Create mission object
-            Mission mission = new Mission();
-            mission.setMatricolaVelivolo(selectedAircraft.getMatricolaVelivolo());
+            // Parse flight number
+            int flightNum;
             try {
-                mission.setNumeroVolo(Integer.parseInt(flightNumber));
+                flightNum = Integer.parseInt(flightNumber);
             } catch (NumberFormatException e) {
                 validationMessageLabel.setText("Flight number must be a valid integer");
                 validationMessageLabel.setVisible(true);
                 return;
             }
+
+            // Check if this flight number already exists for this aircraft
+            // For duplicate flight numbers:
+            if (missionDAO.flightNumberExists(selectedAircraft.getMatricolaVelivolo(), flightNum)) {
+                // Show error popup using AlertUtils
+                AlertUtils.showError(owner, "Validation Error",
+                        "Flight number " + flightNum + " already exists for aircraft " + selectedAircraft.getMatricolaVelivolo());
+                // Also update the validation label for additional visibility
+                validationMessageLabel.setText("Flight number " + flightNum + " already exists for aircraft " + selectedAircraft.getMatricolaVelivolo());
+                validationMessageLabel.setVisible(true);
+                return;
+            }
+
+            // Create mission object
+            Mission mission = new Mission();
+            mission.setMatricolaVelivolo(selectedAircraft.getMatricolaVelivolo());
+            mission.setNumeroVolo(flightNum);
             mission.setDataMissione(java.sql.Date.valueOf(missionDate));
 
             // Convert time strings to SQL Time objects if not empty
@@ -640,6 +656,7 @@ public class MissionManagementController {
             }
         }
 
+        // Rest of the method remains unchanged
         // Check if this position is already configured
         boolean positionAlreadyConfigured = false;
         Connection conn = null;
@@ -897,9 +914,6 @@ public class MissionManagementController {
 
     /**
      * Handles the "Save All" button click.
-     */
-    /**
-     * Handles the "Save All" button click.
      * Saves the mission and its weapon configurations to the database.
      */
     @FXML
@@ -930,6 +944,22 @@ public class MissionManagementController {
             return;
         }
 
+        // Parse flight number
+        int flightNum;
+        try {
+            flightNum = Integer.parseInt(flightNumber);
+        } catch (NumberFormatException e) {
+            AlertUtils.showError(owner, "Validation Error", "Flight number must be a valid integer");
+            return;
+        }
+
+        // Check if this flight number already exists for this aircraft
+        if (missionDAO.flightNumberExists(selectedAircraft.getMatricolaVelivolo(), flightNum)) {
+            AlertUtils.showError(owner, "Validation Error",
+                    "Flight number " + flightNum + " already exists for aircraft " + selectedAircraft.getMatricolaVelivolo());
+            return;
+        }
+
         // Count loaded positions
         long loadedPositions = missilePositionsData.values().stream()
                 .filter(MissionWeaponConfig::isLoaded)
@@ -938,12 +968,7 @@ public class MissionManagementController {
         // Create a new mission
         Mission mission = new Mission();
         mission.setMatricolaVelivolo(selectedAircraft.getMatricolaVelivolo());
-        try {
-            mission.setNumeroVolo(Integer.parseInt(flightNumber));
-        } catch (NumberFormatException e) {
-            AlertUtils.showError(owner, "Validation Error", "Flight number must be a valid integer");
-            return;
-        }
+        mission.setNumeroVolo(flightNum);
         mission.setDataMissione(java.sql.Date.valueOf(missionDate));
 
         // Convert time strings to SQL Time objects if not empty
@@ -1049,7 +1074,7 @@ public class MissionManagementController {
                     stmt.setString(3, config.getWeaponId());
                     // Generate a serial number for the weapon if needed
                     stmt.setString(4, "SN-" + config.getWeaponId().substring(0, Math.min(4, config.getWeaponId().length())) + "-" +
-                                   String.format("%03d", new Random().nextInt(999)));
+                            String.format("%03d", new Random().nextInt(999)));
                     stmt.setDate(5, mission.getDataMissione());
 
                     stmt.executeUpdate();
