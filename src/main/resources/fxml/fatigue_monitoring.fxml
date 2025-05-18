@@ -63,8 +63,8 @@
 
                 <HBox alignment="CENTER_LEFT" spacing="10.0">
                     <children>
-                        <Label text="Launcher Serial Number:" />
-                        <ComboBox fx:id="launcherSerialComboBox" prefWidth="250.0" promptText="Select Serial Number" />
+                        <Label text="Launcher Part Number:" />
+                        <ComboBox fx:id="launcherSerialComboBox" prefWidth="250.0" promptText="Select Part Number" />
                         <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefreshButtonClick" styleClass="secondary-button" text="Refresh" />
                     </children>
                     <padding>

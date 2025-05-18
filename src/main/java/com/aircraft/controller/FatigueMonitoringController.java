@@ -24,6 +24,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 import javafx.stage.Window;
+import java.util.ArrayList;
 
 import java.io.File;
 import java.text.DecimalFormat;
@@ -119,8 +120,8 @@ public class FatigueMonitoringController {
         updateDateTime();
         updateUsername();
 
-        // Set up combo box for launcher serial numbers
-        loadLauncherSerialNumbers();
+        // Set up combo box for launcher part numbers (changed from serial numbers)
+        loadLauncherPartNumbers();
 
         // Set up table columns
         setupTableColumns();
@@ -167,28 +168,32 @@ public class FatigueMonitoringController {
     }
 
     /**
-     * Loads launcher serial numbers from the database into the combo box.
+     * Loads launcher part numbers from the database into the combo box.
+     * Changed from loadLauncherSerialNumbers()
      */
-    private void loadLauncherSerialNumbers() {
-        List<String> serialNumbers = launcherDAO.getAllLauncherSerialNumbers();
-        launcherSerialComboBox.setItems(FXCollections.observableArrayList(serialNumbers));
+    private void loadLauncherPartNumbers() {
+        List<String> partNumbers = launcherDAO.getAllLauncherPartNumbers();
+        launcherSerialComboBox.setItems(FXCollections.observableArrayList(partNumbers));
+
+        // Update the prompt text to reflect the change
+        launcherSerialComboBox.setPromptText("Select Part Number");
     }
 
     /**
      * Handles the selection of a launcher from the combo box.
      */
     private void onLauncherSelected() {
-        String selectedSerial = launcherSerialComboBox.getValue();
-        if (selectedSerial != null && !selectedSerial.isEmpty()) {
-            // Load launcher status data
-            currentLauncherStatus = launcherDAO.getLauncherStatusBySerialNumber(selectedSerial);
+        String selectedPartNumber = launcherSerialComboBox.getValue();
+        if (selectedPartNumber != null && !selectedPartNumber.isEmpty()) {
+            // Load launcher status data using part number instead of serial number
+            currentLauncherStatus = launcherDAO.getLauncherStatusByPartNumber(selectedPartNumber);
 
             if (currentLauncherStatus != null) {
                 // Populate form fields
                 populateFormFields(currentLauncherStatus);
 
                 // Load mission history
-                List<LauncherMission> missions = launcherDAO.getMissionHistoryBySerialNumber(selectedSerial);
+                List<LauncherMission> missions = launcherDAO.getMissionHistoryByPartNumber(selectedPartNumber);
                 missionList.clear();
                 missionList.addAll(missions);
                 missionHistoryTable.setItems(missionList);
@@ -200,10 +205,10 @@ public class FatigueMonitoringController {
                 updateUIState(true);
 
                 // Update report title
-                reportTitleLabel.setText("Fatigue Report: " + selectedSerial);
+                reportTitleLabel.setText("Fatigue Report: " + selectedPartNumber);
             } else {
                 // Launcher status not found
-                AlertUtils.showError(null, "Data Error", "Launcher status data not found for: " + selectedSerial);
+                AlertUtils.showError(null, "Data Error", "Launcher status data not found for: " + selectedPartNumber);
                 clearForm();
                 updateUIState(false);
             }
@@ -212,13 +217,13 @@ public class FatigueMonitoringController {
 
     /**
      * Handles the "Refresh" button click.
-     * Reloads launcher serial numbers from the database.
+     * Reloads launcher part numbers from the database.
      *
      * @param event The ActionEvent object
      */
     @FXML
     protected void onRefreshButtonClick(ActionEvent event) {
-        loadLauncherSerialNumbers();
+        loadLauncherPartNumbers();
         updateDateTime();
     }
 
@@ -260,7 +265,7 @@ public class FatigueMonitoringController {
         // Create a new stage (window) for the chart
         Stage popupStage = new Stage();
         popupStage.setTitle("Launcher Degradation Chart - " +
-                (currentLauncherStatus != null ? currentLauncherStatus.getSerialNumber() : ""));
+                (currentLauncherStatus != null ? currentLauncherStatus.getPartNumber() : ""));
         popupStage.initModality(Modality.NONE); // Non-modal window
 
         // Make the chart fill the window
@@ -298,7 +303,7 @@ public class FatigueMonitoringController {
                 new FileChooser.ExtensionFilter("PDF Files", "*.pdf")
         );
 
-        String defaultFileName = "fatigue_report_" + currentLauncherStatus.getSerialNumber() + ".pdf";
+        String defaultFileName = "fatigue_report_" + currentLauncherStatus.getPartNumber() + ".pdf";
         fileChooser.setInitialFileName(defaultFileName);
 
         File file = fileChooser.showSaveDialog(owner);
@@ -338,7 +343,10 @@ public class FatigueMonitoringController {
     private void populateFormFields(LauncherStatus status) {
         launcherNameField.setText(status.getLauncherName());
         partNumberField.setText(status.getPartNumber());
-        serialNumberField.setText(status.getSerialNumber());
+
+        // Leave serialNumberField empty or set to N/A as we're now using part numbers
+        serialNumberField.setText("N/A");
+
         missionCountField.setText(String.valueOf(status.getMissionCount()));
         firingCountField.setText(String.valueOf(status.getFiringCount()));
 
@@ -390,16 +398,24 @@ public class FatigueMonitoringController {
         XYChart.Series<Number, Number> series = new XYChart.Series<>();
         series.setName("Remaining Life");
 
-        // If no missions, show just current value
-        if (missions.isEmpty() && currentLauncherStatus != null) {
-            series.getData().add(new XYChart.Data<>(1, currentLauncherStatus.getRemainingLifePercentage()));
+        // If no missions, show 100% remaining life
+        if (missions.isEmpty()) {
+            series.getData().add(new XYChart.Data<>(1, 100.0));
         } else {
-            // Add data points from missions - we'll need to calculate cumulative damage
+            // Add data points from missions
             double remainingLife = 100.0;
-            for (int i = 0; i < missions.size(); i++) {
-                LauncherMission mission = missions.get(i);
-                remainingLife -= mission.getDamageFactor() * 100; // Convert damage to percentage
+
+            // Sort missions by date if needed
+            // We'll use the missions in reverse chronological order (newest first)
+            List<LauncherMission> sortedMissions = new ArrayList<>(missions);
+            // No need to sort as the query already sorts them
+
+            for (int i = 0; i < sortedMissions.size(); i++) {
+                // For each mission, reduce remaining life by damage factor
+                remainingLife -= sortedMissions.get(i).getDamageFactor() * 100;
                 remainingLife = Math.max(0, remainingLife); // Don't go below 0
+
+                // Add point to chart (mission number, remaining life)
                 series.getData().add(new XYChart.Data<>(i + 1, remainingLife));
             }
         }
@@ -439,7 +455,7 @@ public class FatigueMonitoringController {
             expandGraphButton.setDisable(true);
         }
 
-        reportTitleLabel.setText("Fatigue Report: [Serial Number]");
+        reportTitleLabel.setText("Fatigue Report: [Part Number]");
     }
 
     /**

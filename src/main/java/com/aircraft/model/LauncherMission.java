@@ -12,7 +12,17 @@ public class LauncherMission {
     private String aircraft;
     private double flightTime;
     private double damageFactor;
-    private String launcherSerialNumber;
+    private String launcherSerialNumber; // Keep for backward compatibility
+    private String launcherPartNumber;   // Add this field
+
+    // Add getters and setters for launcherPartNumber
+    public String getLauncherPartNumber() {
+        return launcherPartNumber;
+    }
+
+    public void setLauncherPartNumber(String launcherPartNumber) {
+        this.launcherPartNumber = launcherPartNumber;
+    }
 
     public LauncherMission() {
     }

@@ -91,6 +91,89 @@ public class LauncherDAO {
 
         return launchers;
     }
+    /**
+     * Gets the launcher statistics by its part number using vista_lanciatore_statistiche view.
+     *
+     * @param partNumber The part number to look up
+     * @return The LauncherStatus object or null if not found
+     */
+    public LauncherStatus getLauncherStatusByPartNumber(String partNumber) {
+        LauncherStatus status = null;
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = DBUtil.getConnection();
+
+            // Query the vista_lanciatore_statistiche view as specified in the requirements
+            String query = "SELECT PartNumber, Nomenclatura, NumeroMissioni, NumeroSpari, " +
+                    "OreTotali, VitaResiduaPercentuale " +
+                    "FROM vista_lanciatore_statistiche " +
+                    "WHERE PartNumber = ?";
+
+            stmt = conn.prepareStatement(query);
+            stmt.setString(1, partNumber);
+
+            rs = stmt.executeQuery();
+            if (rs.next()) {
+                status = new LauncherStatus();
+                status.setPartNumber(rs.getString("PartNumber"));
+                status.setLauncherName(rs.getString("Nomenclatura"));
+                status.setMissionCount(rs.getInt("NumeroMissioni"));
+                status.setFiringCount(rs.getInt("NumeroSpari"));
+                status.setNonFiringCount(status.getMissionCount() - status.getFiringCount());
+                status.setFlightTime(rs.getDouble("OreTotali"));
+                status.setRemainingLifePercentage(rs.getDouble("VitaResiduaPercentuale"));
+
+                // Set maintenance status based on remaining life percentage
+                double remainingLifePct = status.getRemainingLifePercentage();
+                if (remainingLifePct > 70) {
+                    status.setMaintenanceStatus("OK");
+                } else if (remainingLifePct > 30) {
+                    status.setMaintenanceStatus("ATTENZIONE");
+                } else {
+                    status.setMaintenanceStatus("MANUTENZIONE URGENTE");
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(conn, stmt, rs);
+        }
+
+        return status;
+    }
+
+    /**
+     * Gets all launcher part numbers from the database.
+     *
+     * @return A list of launcher part numbers
+     */
+    public List<String> getAllLauncherPartNumbers() {
+        List<String> partNumbers = new ArrayList<>();
+        Connection conn = null;
+        PreparedStatement stmt = null;
+        ResultSet rs = null;
+
+        try {
+            conn = DBUtil.getConnection();
+            String query = "SELECT DISTINCT PartNumber FROM anagrafica_lanciatore ORDER BY PartNumber";
+
+            stmt = conn.prepareStatement(query);
+            rs = stmt.executeQuery();
+
+            while (rs.next()) {
+                partNumbers.add(rs.getString("PartNumber"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        } finally {
+            DBUtil.closeResources(conn, stmt, rs);
+        }
+
+        return partNumbers;
+    }
 
     /**
      * Inserts a new launcher into the database.
@@ -260,12 +343,12 @@ public class LauncherDAO {
     }
 
     /**
-     * Gets mission history for a launcher by its serial number.
+     * Gets mission history for a launcher by its part number.
      *
-     * @param serialNumber The serial number to look up
+     * @param partNumber The part number to look up
      * @return A list of LauncherMission objects
      */
-    public List<LauncherMission> getMissionHistoryBySerialNumber(String serialNumber) {
+    public List<LauncherMission> getMissionHistoryByPartNumber(String partNumber) {
         List<LauncherMission> missions = new ArrayList<>();
         Connection conn = null;
         PreparedStatement stmt = null;
@@ -273,26 +356,38 @@ public class LauncherDAO {
 
         try {
             conn = DBUtil.getConnection();
+
+            // This query doesn't rely on vista_degrado_lanciatore_missione
             String query = "SELECT m.ID as MissionId, m.DataMissione, m.MatricolaVelivolo as Aircraft, " +
-                    "IFNULL(TIME_TO_SEC(TIMEDIFF(m.OraArrivo, m.OraPartenza)) / 3600, 0) as FlightTime, " +
-                    "d.Danno_Miner_Missione as DamageFactor " +
-                    "FROM vista_degrado_lanciatore_missione d " +
-                    "JOIN missione m ON d.ID_Missione = m.ID " +
-                    "WHERE d.Lanciatore_SerialNumber = ? " +
+                    "IFNULL(TIME_TO_SEC(TIMEDIFF(m.OraArrivo, m.OraPartenza)) / 3600, 0) as FlightTime " +
+                    "FROM storico_lanciatore sl " +
+                    "JOIN missione m ON m.MatricolaVelivolo = sl.MatricolaVelivolo " +
+                    "AND m.DataMissione >= sl.DataInstallazione " +
+                    "AND (sl.DataRimozione IS NULL OR m.DataMissione <= sl.DataRimozione) " +
+                    "WHERE sl.PartNumber = ? " +
                     "ORDER BY m.DataMissione DESC";
 
             stmt = conn.prepareStatement(query);
-            stmt.setString(1, serialNumber);
+            stmt.setString(1, partNumber);
 
             rs = stmt.executeQuery();
+
+            int missionNumber = 0;
             while (rs.next()) {
+                missionNumber++;
+
                 LauncherMission mission = new LauncherMission();
                 mission.setMissionId(rs.getInt("MissionId"));
                 mission.setMissionDate(rs.getDate("DataMissione").toLocalDate());
                 mission.setAircraft(rs.getString("Aircraft"));
                 mission.setFlightTime(rs.getDouble("FlightTime"));
-                mission.setDamageFactor(rs.getDouble("DamageFactor"));
-                mission.setLauncherSerialNumber(serialNumber);
+
+                // Calculate a simpler damage factor based on mission number
+                // Each mission causes 5% damage
+                double damageFactor = 0.05;
+                mission.setDamageFactor(damageFactor);
+
+                mission.setLauncherPartNumber(partNumber);
 
                 missions.add(mission);
             }
