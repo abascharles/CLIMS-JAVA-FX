@@ -160,13 +160,19 @@ public class FatigueMonitoringController {
      * Sets up the table columns for the mission history table.
      */
     private void setupTableColumns() {
+        // Ensure all columns have the correct PropertyValueFactory names
         missionIdColumn.setCellValueFactory(new PropertyValueFactory<>("missionId"));
+
+        // Explicitly use the getter method name from LauncherMission
         missionDateColumn.setCellValueFactory(new PropertyValueFactory<>("missionDate"));
+
         missionAircraftColumn.setCellValueFactory(new PropertyValueFactory<>("aircraft"));
         missionFlightTimeColumn.setCellValueFactory(new PropertyValueFactory<>("flightTime"));
         missionDamageColumn.setCellValueFactory(new PropertyValueFactory<>("damageFactor"));
-    }
 
+        // Add debug logging to ensure TableView is correctly set up
+        System.out.println("Table columns initialized");
+    }
     /**
      * Loads launcher part numbers from the database into the combo box.
      * Changed from loadLauncherSerialNumbers()
@@ -182,33 +188,67 @@ public class FatigueMonitoringController {
     /**
      * Handles the selection of a launcher from the combo box.
      */
+    /**
+     * Updates to FatigueMonitoringController.java
+     */
+
+    @FXML
+    /**
+     * Updated onLauncherSelected method for FatigueMonitoringController
+     */
     private void onLauncherSelected() {
         String selectedPartNumber = launcherSerialComboBox.getValue();
         if (selectedPartNumber != null && !selectedPartNumber.isEmpty()) {
-            // Load launcher status data using part number instead of serial number
-            currentLauncherStatus = launcherDAO.getLauncherStatusByPartNumber(selectedPartNumber);
+            System.out.println("Selected part number: " + selectedPartNumber);
 
-            if (currentLauncherStatus != null) {
-                // Populate form fields
-                populateFormFields(currentLauncherStatus);
+            try {
+                // Load launcher status data using part number
+                currentLauncherStatus = launcherDAO.getLauncherStatusByPartNumber(selectedPartNumber);
 
-                // Load mission history
-                List<LauncherMission> missions = launcherDAO.getMissionHistoryByPartNumber(selectedPartNumber);
-                missionList.clear();
-                missionList.addAll(missions);
-                missionHistoryTable.setItems(missionList);
+                if (currentLauncherStatus != null) {
+                    // Populate form fields
+                    populateFormFields(currentLauncherStatus);
 
-                // Create degradation graph
-                createDegradationGraph(missions);
+                    // Load mission history with better error handling
+                    System.out.println("Loading mission history for part number: " + selectedPartNumber);
+                    List<LauncherMission> missions = launcherDAO.getMissionHistoryByPartNumber(selectedPartNumber);
 
-                // Update UI state
-                updateUIState(true);
+                    // Debug output
+                    System.out.println("Found " + (missions != null ? missions.size() : 0) + " missions");
 
-                // Update report title
-                reportTitleLabel.setText("Fatigue Report: " + selectedPartNumber);
-            } else {
-                // Launcher status not found
-                AlertUtils.showError(null, "Data Error", "Launcher status data not found for: " + selectedPartNumber);
+                    // Clear and update mission list with UI update check
+                    missionList.clear();
+                    if (missions != null && !missions.isEmpty()) {
+                        missionList.addAll(missions);
+                        System.out.println("Added missions to observable list");
+                    } else {
+                        System.out.println("No missions to add to the table");
+                    }
+
+                    // Additional check to force table refresh
+                    missionHistoryTable.setItems(null);
+                    missionHistoryTable.setItems(missionList);
+                    missionHistoryTable.refresh();
+
+                    // Create degradation graph
+                    createDegradationGraph(missions != null ? missions : new ArrayList<>());
+
+                    // Update UI state
+                    updateUIState(true);
+
+                    // Update report title
+                    reportTitleLabel.setText("Fatigue Report: " + selectedPartNumber);
+
+                } else {
+                    // Launcher status not found
+                    AlertUtils.showError(null, "Data Error", "Launcher status data not found for: " + selectedPartNumber);
+                    clearForm();
+                    updateUIState(false);
+                }
+            } catch (Exception e) {
+                System.err.println("Error loading launcher data: " + e.getMessage());
+                e.printStackTrace();
+                AlertUtils.showError(null, "Error", "Failed to load launcher data: " + e.getMessage());
                 clearForm();
                 updateUIState(false);
             }

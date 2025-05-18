@@ -24,6 +24,7 @@ import java.text.DecimalFormat;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -45,6 +46,10 @@ public class PDFGenerator {
                                       List<LauncherMission> missionHistory,
                                       String username, String maintenanceStatus) throws IOException {
 
+        System.out.println("Generating PDF report with " +
+                (missionHistory != null ? missionHistory.size() : 0) +
+                " missions");
+
         // Create PDF document
         PdfWriter writer = new PdfWriter(file);
         PdfDocument pdf = new PdfDocument(writer);
@@ -52,7 +57,7 @@ public class PDFGenerator {
         document.setMargins(36, 36, 36, 36);
 
         // Add header
-        addHeader(document, launcherStatus.getSerialNumber(), username);
+        addHeader(document, launcherStatus.getPartNumber(), username);
 
         // Add launcher info
         addLauncherInfo(document, launcherStatus);
@@ -60,10 +65,24 @@ public class PDFGenerator {
         // Add maintenance status
         addMaintenanceStatus(document, maintenanceStatus);
 
-        // Add mission history table
+        // Create a simple graph visualization for launcher degradation
+        try {
+            addDegradationGraph(document, missionHistory, launcherStatus.getRemainingLifePercentage());
+        } catch (Exception e) {
+            System.err.println("Error adding degradation graph to PDF: " + e.getMessage());
+            e.printStackTrace();
+            document.add(new Paragraph("Error generating degradation graph")
+                    .setTextAlignment(TextAlignment.CENTER)
+                    .setFontColor(ColorConstants.RED)
+                    .setMarginTop(10));
+        }
+
+        // Add mission history table with proper error handling
         if (missionHistory != null && !missionHistory.isEmpty()) {
+            System.out.println("Adding mission history table with " + missionHistory.size() + " missions");
             addMissionHistoryTable(document, missionHistory);
         } else {
+            System.out.println("No mission history to add to report");
             document.add(new Paragraph("No mission history available.")
                     .setTextAlignment(TextAlignment.CENTER)
                     .setItalic()
@@ -72,6 +91,7 @@ public class PDFGenerator {
 
         // Close document
         document.close();
+        System.out.println("PDF report generation completed");
     }
 
     /**
@@ -181,7 +201,7 @@ public class PDFGenerator {
     /**
      * Adds the header section to the PDF document.
      */
-    private void addHeader(Document document, String serialNumber, String username) {
+    private void addHeader(Document document, String partNumber, String username) {
         // Create header table
         Table headerTable = new Table(UnitValue.createPercentArray(new float[]{30, 40, 30}));
         headerTable.setWidth(UnitValue.createPercentValue(100));
@@ -226,7 +246,7 @@ public class PDFGenerator {
         document.add(headerTable);
 
         // Report title
-        document.add(new Paragraph("Fatigue Report: " + serialNumber)
+        document.add(new Paragraph("Fatigue Report: " + partNumber)
                 .setBold()
                 .setFontSize(14)
                 .setTextAlignment(TextAlignment.CENTER)
@@ -249,6 +269,8 @@ public class PDFGenerator {
         // Add launcher details
         addInfoRow(infoTable, "Launcher Name:", status.getLauncherName());
         addInfoRow(infoTable, "Part Number:", status.getPartNumber());
+
+        // Serial Number is now "N/A" as per specification
         addInfoRow(infoTable, "Serial Number:", status.getSerialNumber());
         addInfoRow(infoTable, "Number of Missions:", String.valueOf(status.getMissionCount()));
         addInfoRow(infoTable, "Number of Firings:", String.valueOf(status.getFiringCount()));
@@ -302,38 +324,149 @@ public class PDFGenerator {
     }
 
     /**
-     * Adds the mission history table to the PDF document.
+     * Adds a simple degradation graph visualization to the PDF.
+     * This is a new method to create a simplified graph for the PDF.
      */
-    private void addMissionHistoryTable(Document document, List<LauncherMission> missionHistory) {
+    private void addDegradationGraph(Document document, List<LauncherMission> missionHistory, double remainingLife) {
         // Add title
-        document.add(new Paragraph("Mission History")
+        document.add(new Paragraph("Launcher Degradation Over Time")
                 .setBold()
                 .setFontSize(14)
                 .setMarginTop(10)
                 .setMarginBottom(5));
 
-        // Create table
-        Table table = new Table(UnitValue.createPercentArray(new float[]{15, 20, 20, 20, 25}));
-        table.setWidth(UnitValue.createPercentValue(100));
+        // Create a simple visual representation of remaining life
+        float width = 500f;
+        float height = 40f;
 
-        // Add headers
-        table.addHeaderCell(createHeaderCell("Mission ID"));
-        table.addHeaderCell(createHeaderCell("Date"));
-        table.addHeaderCell(createHeaderCell("Aircraft"));
-        table.addHeaderCell(createHeaderCell("Flight Time"));
-        table.addHeaderCell(createHeaderCell("Damage Factor"));
+        // Background rectangle (empty)
+        Table graphTable = new Table(1);
+        graphTable.setWidth(UnitValue.createPercentValue(100));
 
-        // Add data
-        DecimalFormat df = new DecimalFormat("#,##0.00");
-        for (LauncherMission mission : missionHistory) {
-            table.addCell(String.valueOf(mission.getMissionId()));
-            table.addCell(mission.getMissionDate());
-            table.addCell(mission.getAircraft());
-            table.addCell(df.format(mission.getFlightTime()) + " hrs");
-            table.addCell(df.format(mission.getDamageFactor() * 100) + "%");
+        Cell graphCell = new Cell();
+        graphCell.setBorder(new SolidBorder(ColorConstants.GRAY, 1));
+        graphCell.setPadding(5);
+
+        // Create the progress bar
+        Table progressBar = new Table(2);
+        progressBar.setWidth(UnitValue.createPercentValue(100));
+
+        // Remaining life bar (green)
+        Cell remainingCell = new Cell();
+        remainingCell.setWidth(UnitValue.createPercentValue((float)remainingLife));
+        remainingCell.setHeight(height);
+        remainingCell.setBorder(null);
+        remainingCell.setBackgroundColor(new DeviceRgb(50, 180, 50));
+
+        // Used life bar (red)
+        Cell usedCell = new Cell();
+        usedCell.setWidth(UnitValue.createPercentValue((float)(100 - remainingLife)));
+        usedCell.setHeight(height);
+        usedCell.setBorder(null);
+        usedCell.setBackgroundColor(new DeviceRgb(220, 50, 50));
+
+        progressBar.addCell(remainingCell);
+        progressBar.addCell(usedCell);
+
+        graphCell.add(progressBar);
+        graphTable.addCell(graphCell);
+
+        document.add(graphTable);
+
+        // Add legend
+        Paragraph legend = new Paragraph()
+                .add(new Text("Remaining Life: ").setBold())
+                .add(new Text(new DecimalFormat("#,##0.00").format(remainingLife) + "%"));
+        legend.setMarginTop(5);
+        document.add(legend);
+
+        document.add(new Paragraph(" ").setMarginBottom(20));
+    }
+
+    /**
+     * Adds the mission history table to the PDF document.
+     */
+    private void addMissionHistoryTable(Document document, List<LauncherMission> missionHistory) {
+        try {
+            // Add title
+            document.add(new Paragraph("Mission History")
+                    .setBold()
+                    .setFontSize(14)
+                    .setMarginTop(10)
+                    .setMarginBottom(5));
+
+            // Create table
+            Table table = new Table(UnitValue.createPercentArray(new float[]{15, 20, 20, 20, 25}));
+            table.setWidth(UnitValue.createPercentValue(100));
+
+            // Add headers
+            table.addHeaderCell(createHeaderCell("Mission ID"));
+            table.addHeaderCell(createHeaderCell("Date"));
+            table.addHeaderCell(createHeaderCell("Aircraft"));
+            table.addHeaderCell(createHeaderCell("Flight Time"));
+            table.addHeaderCell(createHeaderCell("Damage Factor"));
+
+            // Add data
+            DecimalFormat df = new DecimalFormat("#,##0.00");
+
+            // Safety check - if list is null, use empty list
+            List<LauncherMission> safeList = missionHistory != null ?
+                    missionHistory :
+                    new ArrayList<>();
+
+            if (safeList.isEmpty()) {
+                // Add a row indicating no data
+                Cell emptyCell = new Cell(1, 5)
+                        .add(new Paragraph("No mission history data available"))
+                        .setTextAlignment(TextAlignment.CENTER)
+                        .setItalic();
+                table.addCell(emptyCell);
+            } else {
+                // Add actual data rows with error handling for each cell
+                for (LauncherMission mission : safeList) {
+                    try {
+                        // Mission ID - with null check
+                        table.addCell(String.valueOf(mission.getMissionId()));
+
+                        // Date - handle null values
+                        String dateStr = mission.getMissionDate() != null ?
+                                mission.getMissionDate().toString() : "N/A";
+                        table.addCell(dateStr);
+
+                        // Aircraft - handle null values
+                        table.addCell(mission.getAircraft() != null ? mission.getAircraft() : "N/A");
+
+                        // Flight Time
+                        table.addCell(df.format(mission.getFlightTime()) + " hrs");
+
+                        // Damage Factor - shown as percentage
+                        table.addCell(df.format(mission.getDamageFactor() * 100) + "%");
+                    } catch (Exception e) {
+                        System.err.println("Error adding mission row to PDF table: " + e.getMessage());
+                        // Add placeholder cells if there's an error with this mission
+                        for (int i = 0; i < 5; i++) {
+                            table.addCell("Error");
+                        }
+                    }
+                }
+            }
+
+            document.add(table);
+            System.out.println("Mission history table added to PDF");
+        } catch (Exception e) {
+            System.err.println("Error creating mission history table in PDF: " + e.getMessage());
+            e.printStackTrace();
+            // Add error message to document instead of failing
+            try {
+                document.add(new Paragraph("Error generating mission history table")
+                        .setTextAlignment(TextAlignment.CENTER)
+                        .setFontColor(ColorConstants.RED)
+                        .setMarginTop(10));
+            } catch (Exception ex) {
+                // Last resort if even adding error message fails
+                System.err.println("Failed to add error message to PDF: " + ex.getMessage());
+            }
         }
-
-        document.add(table);
     }
 
     /**

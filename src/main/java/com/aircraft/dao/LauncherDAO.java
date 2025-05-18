@@ -106,7 +106,7 @@ public class LauncherDAO {
         try {
             conn = DBUtil.getConnection();
 
-            // Query the vista_lanciatore_statistiche view as specified in the requirements
+            // Directly query vista_lanciatore_statistiche as required in the specifications
             String query = "SELECT PartNumber, Nomenclatura, NumeroMissioni, NumeroSpari, " +
                     "OreTotali, VitaResiduaPercentuale " +
                     "FROM vista_lanciatore_statistiche " +
@@ -115,11 +115,17 @@ public class LauncherDAO {
             stmt = conn.prepareStatement(query);
             stmt.setString(1, partNumber);
 
+            System.out.println("Executing query for part number: " + partNumber);
             rs = stmt.executeQuery();
+
             if (rs.next()) {
                 status = new LauncherStatus();
                 status.setPartNumber(rs.getString("PartNumber"));
                 status.setLauncherName(rs.getString("Nomenclatura"));
+
+                // No more serial number - setting to "N/A" as specified in the UI code
+                status.setSerialNumber("N/A");
+
                 status.setMissionCount(rs.getInt("NumeroMissioni"));
                 status.setFiringCount(rs.getInt("NumeroSpari"));
                 status.setNonFiringCount(status.getMissionCount() - status.getFiringCount());
@@ -135,8 +141,16 @@ public class LauncherDAO {
                 } else {
                     status.setMaintenanceStatus("MANUTENZIONE URGENTE");
                 }
+
+                System.out.println("Found launcher with part number: " + partNumber);
+                System.out.println("Missions: " + status.getMissionCount() +
+                        ", Firings: " + status.getFiringCount() +
+                        ", Life %: " + status.getRemainingLifePercentage());
+            } else {
+                System.out.println("No launcher found with part number: " + partNumber);
             }
         } catch (SQLException e) {
+            System.err.println("Error retrieving launcher status: " + e.getMessage());
             e.printStackTrace();
         } finally {
             DBUtil.closeResources(conn, stmt, rs);
@@ -356,14 +370,13 @@ public class LauncherDAO {
 
         try {
             conn = DBUtil.getConnection();
+            System.out.println("Retrieving mission history for part number: " + partNumber);
 
-            // This query doesn't rely on vista_degrado_lanciatore_missione
-            String query = "SELECT m.ID as MissionId, m.DataMissione, m.MatricolaVelivolo as Aircraft, " +
-                    "IFNULL(TIME_TO_SEC(TIMEDIFF(m.OraArrivo, m.OraPartenza)) / 3600, 0) as FlightTime " +
-                    "FROM storico_lanciatore sl " +
-                    "JOIN missione m ON m.MatricolaVelivolo = sl.MatricolaVelivolo " +
-                    "AND m.DataMissione >= sl.DataInstallazione " +
-                    "AND (sl.DataRimozione IS NULL OR m.DataMissione <= sl.DataRimozione) " +
+            // A more direct query that should work with your database structure
+            String query = "SELECT DISTINCT m.ID as MissionId, m.DataMissione, m.MatricolaVelivolo as Aircraft, " +
+                    "TIMESTAMPDIFF(HOUR, m.OraPartenza, m.OraArrivo) as FlightHours " +
+                    "FROM missione m " +
+                    "JOIN storico_lanciatore sl ON m.MatricolaVelivolo = sl.MatricolaVelivolo " +
                     "WHERE sl.PartNumber = ? " +
                     "ORDER BY m.DataMissione DESC";
 
@@ -371,27 +384,39 @@ public class LauncherDAO {
             stmt.setString(1, partNumber);
 
             rs = stmt.executeQuery();
+            System.out.println("Query executed for mission history");
 
-            int missionNumber = 0;
             while (rs.next()) {
-                missionNumber++;
-
                 LauncherMission mission = new LauncherMission();
                 mission.setMissionId(rs.getInt("MissionId"));
-                mission.setMissionDate(rs.getDate("DataMissione").toLocalDate());
+
+                java.sql.Date missionDate = rs.getDate("DataMissione");
+                if (missionDate != null) {
+                    mission.setMissionDate(missionDate.toLocalDate());
+                }
+
                 mission.setAircraft(rs.getString("Aircraft"));
-                mission.setFlightTime(rs.getDouble("FlightTime"));
 
-                // Calculate a simpler damage factor based on mission number
-                // Each mission causes 5% damage
-                double damageFactor = 0.05;
-                mission.setDamageFactor(damageFactor);
+                // Handle potential null flight time
+                Object flightTimeObj = rs.getObject("FlightHours");
+                double flightTime = (flightTimeObj != null) ? rs.getDouble("FlightHours") : 0.0;
+                mission.setFlightTime(flightTime);
 
+                // Set a standard damage factor - can be refined based on your business logic
+                mission.setDamageFactor(0.05);
+
+                // Store the part number
                 mission.setLauncherPartNumber(partNumber);
 
                 missions.add(mission);
+                System.out.println("Added mission: ID=" + mission.getMissionId() +
+                        ", Date=" + mission.getMissionDate() +
+                        ", Aircraft=" + mission.getAircraft());
             }
+
+            System.out.println("Total missions found: " + missions.size());
         } catch (SQLException e) {
+            System.err.println("Error retrieving mission history: " + e.getMessage());
             e.printStackTrace();
         } finally {
             DBUtil.closeResources(conn, stmt, rs);
@@ -399,4 +424,6 @@ public class LauncherDAO {
 
         return missions;
     }
+
+
 }
