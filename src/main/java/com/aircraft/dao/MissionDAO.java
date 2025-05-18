@@ -559,7 +559,7 @@ public List<WeaponStatus> getWeaponsForMission(int id) {
         conn = DBUtil.getConnection();
         System.out.println("Fetching weapons for mission ID: " + id);
 
-        // First get mission details
+        // Get mission details first
         String sqlMission = "SELECT MatricolaVelivolo FROM missione WHERE ID = ?";
         stmt = conn.prepareStatement(sqlMission);
         stmt.setInt(1, id);
@@ -574,19 +574,22 @@ public List<WeaponStatus> getWeaponsForMission(int id) {
             return weapons; // Return empty list if mission not found
         }
 
-        // Query launcher and missile data from historical tables
+        // Join with dichiarazione_missile_gui to get firing status
         String sqlWeapons =
-            "SELECT sl.PosizioneVelivolo, sl.PartNumber AS LauncherPN, sl.SerialeAssieme AS LauncherSN, " +
-            "sc.PartNumber AS MissilePN, sc.Descrizione AS MissileName, " +
-            "CASE WHEN sc.Stato = 'FIRED' THEN 'FIRED' ELSE 'ONBOARD' END AS Status " +
+            "SELECT sl.PosizioneVelivolo, sl.PartNumber AS LauncherPN, '' AS LauncherSN, " +
+            "sc.PartNumber AS MissilePN, sc.Nomenclatura AS MissileName, " +
+            "CASE WHEN dm.Missile_Sparato = 'FIRED' THEN 'FIRED' ELSE 'ONBOARD' END AS Status " +
             "FROM storico_lanciatore sl " +
             "LEFT JOIN storico_carico sc ON sl.PosizioneVelivolo = sc.PosizioneVelivolo " +
             "AND sl.MatricolaVelivolo = sc.MatricolaVelivolo " +
-            "WHERE sl.IdMissione = ? " +
+            "LEFT JOIN dichiarazione_missile_gui dm ON dm.PosizioneVelivolo = sl.PosizioneVelivolo " +
+            "AND dm.ID_Missione = ? " +
+            "WHERE sl.MatricolaVelivolo = ? " +
             "ORDER BY sl.PosizioneVelivolo";
 
         stmt = conn.prepareStatement(sqlWeapons);
         stmt.setInt(1, id);
+        stmt.setString(2, matricola);
         rs = stmt.executeQuery();
 
         while (rs.next()) {
