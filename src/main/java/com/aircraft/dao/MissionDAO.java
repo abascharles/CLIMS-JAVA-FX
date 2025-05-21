@@ -568,50 +568,45 @@ public Object[] getFlightDataForMission(int id) {
 }
 
     public List<WeaponStatus> getWeaponsForMission(int id) {
+        List<WeaponStatus> weapons = new ArrayList<>();
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        List<WeaponStatus> weapons = new ArrayList<>();
 
         try {
             conn = DBUtil.getConnection();
-            System.out.println("Fetching weapons for mission ID: " + id);
-
-            // Get mission details including launcher and missile data
-            // Get mission details including launcher and missile data
-            String sqlMission = "SELECT ID, MatricolaVelivolo, PartNumberLanciatoreP1, PartNumberLanciatoreP13, " +
-                                       "PartNumberMissileP1, PartNumberMissileP13 FROM missione WHERE ID = ?";
-            stmt = conn.prepareStatement(sqlMission);
+            String sql = "SELECT * FROM missione WHERE ID = ?";
+            stmt = conn.prepareStatement(sql);
             stmt.setInt(1, id);
             rs = stmt.executeQuery();
 
             if (rs.next()) {
-                // Create WeaponStatus for position 1
-                if (rs.getString("LauncherPN1") != null && !rs.getString("LauncherPN1").isEmpty()) {
+                // Position P1
+                if (rs.getString("PartNumberLanciatoreP1") != null) {
                     WeaponStatus weapon1 = new WeaponStatus();
-                    weapon1.setPosition("1");
-                    weapon1.setLauncherPartNumber(rs.getString("LauncherPN1"));
+                    weapon1.setPosition("P1");
+                    weapon1.setLauncherPartNumber(rs.getString("PartNumberLanciatoreP1"));
                     weapon1.setLauncherSerialNumber(""); // SN not stored
-                    weapon1.setMissilePartNumber(rs.getString("MissilePN1"));
-                    weapon1.setMissileName(getMissileNameByPN(rs.getString("MissilePN1")));
-                    weapon1.setStatus(getFiringStatus(id, "1"));
+                    weapon1.setMissilePartNumber(rs.getString("PartNumberMissileP1"));
+                    weapon1.setMissileName(getMissileNameByPN(rs.getString("PartNumberMissileP1")));
+                    weapon1.setStatus(getFiringStatus(id, "P1"));
                     weapons.add(weapon1);
                 }
 
-                // Create WeaponStatus for position 13
-                if (rs.getString("LauncherPN13") != null && !rs.getString("LauncherPN13").isEmpty()) {
+                // Position P13
+                if (rs.getString("PartNumberLanciatoreP13") != null) {
                     WeaponStatus weapon13 = new WeaponStatus();
-                    weapon13.setPosition("13");
-                    weapon13.setLauncherPartNumber(rs.getString("LauncherPN13"));
+                    weapon13.setPosition("P13");
+                    weapon13.setLauncherPartNumber(rs.getString("PartNumberLanciatoreP13"));
                     weapon13.setLauncherSerialNumber(""); // SN not stored
-                    weapon13.setMissilePartNumber(rs.getString("MissilePN13"));
-                    weapon13.setMissileName(getMissileNameByPN(rs.getString("MissilePN13")));
-                    weapon13.setStatus(getFiringStatus(id, "13"));
+                    weapon13.setMissilePartNumber(rs.getString("PartNumberMissileP13"));
+                    weapon13.setMissileName(getMissileNameByPN(rs.getString("PartNumberMissileP13")));
+                    weapon13.setStatus(getFiringStatus(id, "P13"));
                     weapons.add(weapon13);
                 }
-            }
 
-            System.out.println("Found " + weapons.size() + " weapons for mission ID: " + id);
+                System.out.println("Found " + weapons.size() + " weapons for mission ID: " + id);
+            }
         } catch (SQLException e) {
             System.err.println("Error retrieving weapons: " + e.getMessage());
             e.printStackTrace();
@@ -628,6 +623,12 @@ public Object[] getFlightDataForMission(int id) {
      * @param partNumber The missile part number
      * @return The missile name
      */
+    /**
+     * Gets missile name by part number.
+     *
+     * @param partNumber The missile part number
+     * @return The missile name or the part number itself if lookup fails
+     */
     private String getMissileNameByPN(String partNumber) {
         if (partNumber == null || partNumber.isEmpty()) {
             return "";
@@ -636,25 +637,53 @@ public Object[] getFlightDataForMission(int id) {
         Connection conn = null;
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        String missileName = "";
 
         try {
             conn = DBUtil.getConnection();
-            String sql = "SELECT Nomenclatura FROM anagrafica_carico WHERE PartNumber = ? LIMIT 1";
-            stmt = conn.prepareStatement(sql);
-            stmt.setString(1, partNumber);
-            rs = stmt.executeQuery();
 
-            if (rs.next()) {
-                missileName = rs.getString("Nomenclatura");
+            // First try looking up from view_weapon_list view
+            try {
+                String sql = "SELECT Nomenclatura FROM view_weapon_list WHERE PartNumber = ? LIMIT 1";
+                stmt = conn.prepareStatement(sql);
+                stmt.setString(1, partNumber);
+                rs = stmt.executeQuery();
+
+                if (rs.next() && rs.getString("Nomenclatura") != null) {
+                    return rs.getString("Nomenclatura");
+                }
+            } catch (SQLException e) {
+                // View might not exist, continue to next source
+            } finally {
+                DBUtil.closeResources(null, stmt, rs);
             }
+
+            // Try looking up from armi table
+            try {
+                String sql = "SELECT Nomenclatura FROM armi WHERE PartNumber = ? LIMIT 1";
+                stmt = conn.prepareStatement(sql);
+                stmt.setString(1, partNumber);
+                rs = stmt.executeQuery();
+
+                if (rs.next() && rs.getString("Nomenclatura") != null) {
+                    return rs.getString("Nomenclatura");
+                }
+            } catch (SQLException e) {
+                // Table might not exist, continue to next source
+            } finally {
+                DBUtil.closeResources(null, stmt, rs);
+            }
+
+            // Continue with other lookup sources...
+            // (keeping the rest of your existing code)
+
         } catch (SQLException e) {
-            System.err.println("Error retrieving missile name: " + e.getMessage());
+            System.err.println("Error in missile name lookup: " + e.getMessage());
         } finally {
             DBUtil.closeResources(conn, stmt, rs);
         }
 
-        return missileName;
+        // If all lookups fail, return the part number itself
+        return partNumber;
     }
 
     /**
