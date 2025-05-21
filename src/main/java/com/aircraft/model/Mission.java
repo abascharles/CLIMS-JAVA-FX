@@ -14,6 +14,10 @@ public class Mission {
     private int numeroVolo;
     private Time oraPartenza;
     private Time oraArrivo;
+    private String launcherPN1;
+    private String launcherPN13;
+    private String missilePN1;
+    private String missilePN13;
 
     /**
      * Default constructor.
@@ -38,6 +42,38 @@ public class Mission {
         this.numeroVolo = numeroVolo;
         this.oraPartenza = oraPartenza;
         this.oraArrivo = oraArrivo;
+    }
+    // Getters and setters for the new fields
+    public String getLauncherPN1() {
+        return launcherPN1;
+    }
+
+    public void setLauncherPN1(String launcherPN1) {
+        this.launcherPN1 = launcherPN1;
+    }
+
+    public String getLauncherPN13() {
+        return launcherPN13;
+    }
+
+    public void setLauncherPN13(String launcherPN13) {
+        this.launcherPN13 = launcherPN13;
+    }
+
+    public String getMissilePN1() {
+        return missilePN1;
+    }
+
+    public void setMissilePN1(String missilePN1) {
+        this.missilePN1 = missilePN1;
+    }
+
+    public String getMissilePN13() {
+        return missilePN13;
+    }
+
+    public void setMissilePN13(String missilePN13) {
+        this.missilePN13 = missilePN13;
     }
 
     /**
