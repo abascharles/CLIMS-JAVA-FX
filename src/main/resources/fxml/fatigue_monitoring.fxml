@@ -64,7 +64,7 @@
                 <HBox alignment="CENTER_LEFT" spacing="10.0">
                     <children>
                         <Label text="Launcher Part Number:" />
-                        <ComboBox fx:id="launcherSerialComboBox" prefWidth="250.0" promptText="Select Part Number" />
+                        <ComboBox fx:id="launcherPartNumberComboBox" prefWidth="250.0" promptText="Select Part Number" />
                         <Button fx:id="refreshButton" mnemonicParsing="false" onAction="#onRefreshButtonClick" styleClass="secondary-button" text="Refresh" />
                     </children>
                     <padding>
@@ -109,7 +109,7 @@
                             <children>
                                 <Label styleClass="field-label" text="Launcher Name:" />
                                 <Label styleClass="field-label" text="Part Number:" GridPane.rowIndex="1" />
-                                <Label styleClass="field-label" text="Serial Number:" GridPane.rowIndex="2" />
+<!--                                <Label styleClass="field-label" text="Serial Number:" GridPane.rowIndex="2" />-->
                                 <Label styleClass="field-label" text="Number of Missions:" GridPane.rowIndex="3" />
                                 <Label styleClass="field-label" text="Number of Firings:" GridPane.rowIndex="4" />
                                 <Label styleClass="field-label" text="Flight Time (hours):" GridPane.rowIndex="5" />
@@ -117,7 +117,7 @@
 
                                 <TextField fx:id="launcherNameField" editable="false" GridPane.columnIndex="1" />
                                 <TextField fx:id="partNumberField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="1" />
-                                <TextField fx:id="serialNumberField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+<!--                                <TextField fx:id="serialNumberField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="2" />-->
                                 <TextField fx:id="missionCountField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="3" />
                                 <TextField fx:id="firingCountField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="4" />
                                 <TextField fx:id="flightTimeField" editable="false" GridPane.columnIndex="1" GridPane.rowIndex="5" />

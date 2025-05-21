@@ -52,7 +52,7 @@ public class FatigueMonitoringController {
     private Label maintenanceStatusLabel;
 
     @FXML
-    private ComboBox<String> launcherSerialComboBox;
+    private ComboBox<String> launcherPartNumberComboBox;
 
     @FXML
     private TextField launcherNameField;
@@ -60,8 +60,7 @@ public class FatigueMonitoringController {
     @FXML
     private TextField partNumberField;
 
-    @FXML
-    private TextField serialNumberField;
+
 
     @FXML
     private TextField missionCountField;
@@ -127,7 +126,7 @@ public class FatigueMonitoringController {
         setupTableColumns();
 
         // Set up launcher selection change listener
-        launcherSerialComboBox.setOnAction(e -> onLauncherSelected());
+        launcherPartNumberComboBox.setOnAction(e -> onLauncherSelected());
 
         // Set initial UI state
         updateUIState(false);
@@ -179,10 +178,10 @@ public class FatigueMonitoringController {
      */
     private void loadLauncherPartNumbers() {
         List<String> partNumbers = launcherDAO.getAllLauncherPartNumbers();
-        launcherSerialComboBox.setItems(FXCollections.observableArrayList(partNumbers));
+        launcherPartNumberComboBox.setItems(FXCollections.observableArrayList(partNumbers));
 
         // Update the prompt text to reflect the change
-        launcherSerialComboBox.setPromptText("Select Part Number");
+        launcherPartNumberComboBox.setPromptText("Select Part Number");
     }
 
     /**
@@ -197,7 +196,7 @@ public class FatigueMonitoringController {
      * Updated onLauncherSelected method for FatigueMonitoringController
      */
     private void onLauncherSelected() {
-        String selectedPartNumber = launcherSerialComboBox.getValue();
+        String selectedPartNumber = launcherPartNumberComboBox.getValue();
         if (selectedPartNumber != null && !selectedPartNumber.isEmpty()) {
             System.out.println("Selected part number: " + selectedPartNumber);
 
@@ -384,8 +383,7 @@ public class FatigueMonitoringController {
         launcherNameField.setText(status.getLauncherName());
         partNumberField.setText(status.getPartNumber());
 
-        // Leave serialNumberField empty or set to N/A as we're now using part numbers
-        serialNumberField.setText("N/A");
+
 
         missionCountField.setText(String.valueOf(status.getMissionCount()));
         firingCountField.setText(String.valueOf(status.getFiringCount()));
@@ -478,7 +476,6 @@ public class FatigueMonitoringController {
     private void clearForm() {
         launcherNameField.clear();
         partNumberField.clear();
-        serialNumberField.clear();
         missionCountField.clear();
         firingCountField.clear();
         flightTimeField.clear();
